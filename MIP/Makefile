@@ -59,7 +59,7 @@ install: all
 	sudo cp build/inject /usr/bin/
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
 	sudo cp local.lsdinjector.plist /Library/LaunchDaemons/
-	(read -p "Inject MIP to launchservicesd without restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd build/lsdinjector.dylib; fi;)
+	(read -p "Inject MIP to launchservicesd without restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd /usr/lib/mip/lsdinjector.dylib; fi;)
 
 uninstall:
 	-sudo rm -rf /usr/lib/mip
