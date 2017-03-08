@@ -54,7 +54,7 @@ install: all
 	sudo mkdir -p /usr/lib/mip/Bundles
 	sudo mkdir -p /usr/local/include/mip
 	@# We remove the old libraries before copying, overwriting causes codesigning issues.
-	-@sudo rm -f build/lsdinjector.dylib build/loader.dylib
+	-@sudo rm -f /usr/lib/mip/lsdinjector.dylib /usr/lib/mip/loader.dylib
 	sudo cp build/lsdinjector.dylib build/loader.dylib /usr/lib/mip/
 	sudo cp build/inject /usr/bin/
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
