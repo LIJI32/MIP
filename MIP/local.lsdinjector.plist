@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>GroupName</key>
+	<string>wheel</string>
 	<key>KeepAlive</key>
 	<dict>
 		<key>SuccessfulExit</key>
@@ -17,6 +19,8 @@
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
+	<key>ThrottleInterval</key>
+	<integer>1</integer>
 	<key>UserName</key>
 	<string>root</string>
 </dict>
