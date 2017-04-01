@@ -10,6 +10,7 @@ MIP should work on all 64-bit versions of macOS, but it's deliberately limited t
 MIP has the following advantages when comparing to other injection techniques:
 
  * Injects to every single GUI process, including non-apps processes such as system processes with GUI, the dock, tab processes of browsers, etc.
+ * Injects to restricted binaries (binaries using a `__RESTRICT,__restrict` section or special entitlements, where dyld enviroment variables are ignored)
  * The injected code runs on the main thread, and blocks it until it finishes initializing; preventing race bugs.
  * The injected code is always injected at a deterministic time, in the same code flow for every app, making code easier to debug
  * The injected code runs at a very early stage in the process's lifetime, before the UI frameworks start running, making advanced UI customizations possible
