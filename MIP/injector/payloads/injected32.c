@@ -1,21 +1,13 @@
 #include "injected.h"
+#include <mach-o/dyld_images.h>
 #include <mach-o/loader.h>
-#include <mach-o/getsect.h>
+#include <mach-o/nlist.h>
 #include <string.h>
 #include <dlfcn.h>
 
 /* These values are overwritten on a per-injection basis by the injector. */
 /* Must not be defined as consts, or the compiler will optimize them. */
-struct {
-    uint32_t version;
-    uint32_t infoArrayCount;
-    uint32_t infoArray;
-    uint32_t notification;
-    uint8_t processDetachedFromSharedRegion;
-    uint8_t libSystemInitialized;
-    uint8_t pad[2];
-    uint32_t dyldImageLoadAddress;
-} * dyld_info = (typeof(dyld_info)) DYLD_MAGIC_32;
+struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_32;
 
 char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
 
@@ -40,42 +32,85 @@ __asm__ (
          "    ret \n"
          );
 
-/* Clang on x86-32 does not support the preserve_all convention. Instead, we use
- * the interrupt attribute. The Makefile takes care of replacing iret with ret. */
-void __attribute__((interrupt)) entry(void * __attribute__((unused)) unused)
+static const struct mach_header *get_header_by_path(const char *name)
+{
+    for (unsigned i = 0; i < dyld_info->infoArrayCount; i++) {
+        if (strcmp(dyld_info->infoArray[i].imageFilePath, name) == 0) {
+            return (const struct mach_header *) dyld_info->infoArray[i].imageLoadAddress;
+        }
+    }
+    return NULL;
+}
+
+static const void *get_symbol_from_header(const struct mach_header *header, const char *symbol)
+{
+    if (!header) {
+        return NULL;
+    }
+    
+    /* Get the required commands */
+    
+    const struct symtab_command *symtab = NULL;
+    const struct segment_command *first = NULL;
+    const struct segment_command *linkedit = NULL;
+    const struct load_command *cmd = (typeof(cmd))(header + 1);
+    
+    for (unsigned i = 0; i < header->ncmds; i++, cmd = (typeof(cmd)) ((char*) cmd + cmd->cmdsize)) {
+        if (cmd->cmd == LC_SEGMENT) {
+            if (!first && ((typeof(first))cmd)->filesize ) {
+                first = (typeof(first)) cmd;
+            }
+            if (strcmp(((typeof(linkedit)) cmd)->segname, "__LINKEDIT") == 0) {
+                linkedit = (typeof(linkedit)) cmd;
+            }
+        }
+        else if (cmd->cmd == LC_SYMTAB) {
+            symtab = (typeof (symtab)) cmd;
+        }
+        if (symtab && linkedit) break;
+    }
+    
+    if (!symtab || !linkedit) return NULL;
+    
+    const char *string_table =
+        ((const char *) header + symtab->stroff - linkedit->fileoff + linkedit->vmaddr - first->vmaddr);
+    const struct nlist *symbols = (typeof (symbols))
+        ((const char *) header + symtab->symoff - linkedit->fileoff + linkedit->vmaddr - first->vmaddr);
+    
+    for (unsigned i = 0; i < symtab->nsyms; i++) {
+        if (strcmp(string_table + symbols[i].n_un.n_strx, symbol) == 0) {
+            return (char *)header + symbols[i].n_value - first->vmaddr;
+        }
+    }
+    
+    return NULL;
+}
+
+
+void _entry()
 {
     uint32_t flags = get_flags();
-    uint32_t const_size = 0;
-    
-    /* dyld's __DATA,__const section contain an array that maps internal function names (e.g. __dyld_dlopen)
-       to actual function pointers. This array is used by the internal dyld lookup function, which is evntually
-       used by libdyld. */
-    
-
-    void **const_pointer = (void **)getsectdatafromheader((void *)dyld_info->dyldImageLoadAddress,
-                                                          "__DATA",
-                                                          "__const",
-                                                          &const_size);
     
     typeof(dlopen) *$dlopen = NULL;
     
-    for (; const_size && $dlopen == NULL; const_size -= sizeof(*const_pointer), const_pointer++) {
-        /* The const contains other data, which might be NULL. It seems that all other data in that section is pointers,
-           so using strcmp is safe. (The other string is const in length) */
-        if (*const_pointer == NULL) continue;
-
-        /* In case we ever need it: dlsym's internal name is __dyld_dlsym */
-        if (strcmp(*const_pointer, "__dyld_dlopen") == 0) {
-            $dlopen = const_pointer[1];
-            continue;
-        }
-    }
-
+    /* We can't call dyld`dlopen when dyld3 is being used, so we must find libdyld`dlopen and call that instead */
+    $dlopen = get_symbol_from_header(get_header_by_path("/usr/lib/system/libdyld.dylib"), "_dlopen");
+    
     if ($dlopen) {
         $dlopen(argument, RTLD_NOW);
     }
-
+	
     set_flags(flags);
+}
+
+/* Clang on x86-32 does not support the preserve_all convention. Instead, we use
+ * the interrupt attribute. The Makefile takes care of replacing iret with ret.
+   Additionally, Clang sometimes stores xmm7 on an unaligned address and crashes,
+   and since LLVM's bug tracker has been down for ages, the Makefile fixes that
+   as well. -_- */
+void __attribute__((interrupt)) entry(void * __attribute__((unused)) unused)
+{
+    _entry();
 }
 
 /* Taken from Apple's libc */
@@ -90,54 +125,4 @@ const char *s1, *s2;
     return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
 }
 
-/* Taken from Apple's getsecbyname.c */
 
-char *
-getsectdatafromheader(
-const struct mach_header *mhp,
-const char *segname,
-const char *sectname,
-uint32_t *size)
-{
-    const struct section *sp;
-
-    sp = getsectbynamefromheader(mhp, segname, sectname);
-    if(sp == NULL){
-        *size = 0;
-        return(NULL);
-    }
-    *size = sp->size;
-    /* In Apple's version, mhp was not added, which made completely no sense. */
-    return((char *)mhp + ((uintptr_t)(sp->addr)));
-}
-
-const struct section *
-getsectbynamefromheader(
-const struct mach_header *mhp,
-const char *segname,
-const char *sectname)
-{
-    struct segment_command *sgp;
-    struct section *sp;
-    uint32_t i, j;
-
-    sgp = (struct segment_command *)
-          ((char *)mhp + sizeof(struct mach_header));
-    for(i = 0; i < mhp->ncmds; i++){
-        if(sgp->cmd == LC_SEGMENT)
-        if(strcmp(sgp->segname, segname) == 0 ||
-           mhp->filetype == MH_OBJECT){
-            sp = (struct section *)((char *)sgp +
-             sizeof(struct segment_command));
-            for(j = 0; j < sgp->nsects; j++){
-            if(strcmp(sp->sectname, sectname) == 0 &&
-               strcmp(sp->segname, segname) == 0)
-                return(sp);
-            sp = (struct section *)((char *)sp +
-                 sizeof(struct section));
-            }
-        }
-        sgp = (struct segment_command *)((char *)sgp + sgp->cmdsize);
-    }
-    return((struct section *)0);
-}

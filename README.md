@@ -4,7 +4,7 @@ MIP, macOS Injection Platform, is a platform that lets macOS developers create o
 ## Disclaimer
 Code injection is dangerous, and might make your computer unstable or unsable if you don't know what you're doing. Use MIP with care. In case of emergency, delete `/Library/LaunchDaemons/local.lsdinjector.plist` using the recovery boot.
 
-MIP should work on all 64-bit versions of macOS, but it's deliberately limited to Yosemite and newer; released versions were not tested on versions other than Sierra.
+MIP should work on all 64-bit versions of macOS, but it's deliberately limited to Yosemite and newer; released versions were not tested on versions older than Sierra.
 
 ## MIP's Advantages
 MIP has the following advantages when comparing to other injection techniques:
@@ -18,6 +18,7 @@ MIP has the following advantages when comparing to other injection techniques:
  * Does not modify any system file on disk and can be easily uninstalled without rebooting
  * Does not use `DYLD_INSERT_LIBRARIES`, which may break the system if a file is deleted.
  * Works with both 32- and 64-bit applications, and allows injection to Garbage Collected processes (On El Capitan and older, GC was removed in Sierra)
+ * Supports High Sierra (10.13) and dyld3
 
 ## How To Compile
 You will need Xcode's command-line tools, as well as binutils for gobjcopy (`brew install binutils`). You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable!

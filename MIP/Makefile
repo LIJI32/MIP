@@ -43,8 +43,12 @@ build/injector/payloads/injected64.c.dylib: injector/payloads/injected64.c
 	
 build/injector/payloads/injected32.c.dylib: injector/payloads/injected32.c
 	mkdir -p $(dir $@)
-	@# -O0 (instead of -Oz) due to an LLVM/Clang bug; it causes generates unaligned movaps opcodes.
-	clang $(CFLAGS) -O0 -arch i386 $^ -S -o - | sed "s/^	iret/	ret/g" | clang -Wl,-order_file,injector/payloads/order -shared -nostdlib -xassembler - -arch i386 -o $@
+	@# Fix the unaligned movaps LLVM bug, and convert iret to ret.
+	clang $(CFLAGS) -Oz -arch i386 $^ -S -o - \
+		| sed "s/^	iret/	ret/g" \
+		| sed "s/^	movaps	%xmm7, -32(%ebp)/	movaps	%xmm7, -40(%ebp)/g" \
+		| sed "s/^	movaps	-32(%ebp), %xmm7/	movaps	-40(%ebp), %xmm7/g" \
+		| clang -Wl,-order_file,injector/payloads/order -shared -nostdlib -xassembler - -arch i386 -o $@
 	
 build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	gobjcopy -Obinary $^ $@
