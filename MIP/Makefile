@@ -2,7 +2,7 @@
 .PHONY: all install uninstall
 
 LDFLAGS := -g -mmacosx-version-min=10.10 -lc -F/System/Library/PrivateFrameworks
-CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3
+CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations
 SIGN_IDENTITY ?= "CodeSign"
 
 all: build/lsdinjector.dylib build/loader.dylib build/inject local.lsdinjector.plist
