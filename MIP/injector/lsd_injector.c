@@ -14,8 +14,11 @@
 extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *);
 extern void xpc_dictionary_get_audit_token(xpc_object_t xdict, audit_token_t *token);
 
-uint64_t handleClientMessageHook(void *this, uint64_t command, xpc_object_t dict);
-typeof(handleClientMessageHook) *handleClientMessageOrig;
+uint64_t handleClientMessageHook_Sierra(void *this, uint64_t command, xpc_object_t dict);
+typeof(handleClientMessageHook_Sierra) *handleClientMessageOrig_Sierra;
+
+uint64_t handleClientMessageHook_HighSierra(void *this, void *session, xpc_connection_t connection, xpc_object_t dict);
+typeof(handleClientMessageHook_HighSierra) *handleClientMessageOrig_HighSierra;
 
 /* We want the user data to be accessible from all processes, but some processes (for
    example, Chrome's sub-processes) have a very strict sandbox profile so putting the
@@ -42,7 +45,7 @@ void create_user_data_folder(pid_t pid)
     }
 }
 
-uint64_t handleClientMessageHook(void *this, uint64_t command, xpc_object_t dict)
+void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
 {
     /* Command 500 is sent by all GUI processes to launchservicesd when they launch.
        The process will block until it receives an answer from launchservicesd.
@@ -74,12 +77,31 @@ uint64_t handleClientMessageHook(void *this, uint64_t command, xpc_object_t dict
         }
         inject_to_task(task, "/usr/lib/mip/loader.dylib");
     }
-    return handleClientMessageOrig(this, command, dict);
+}
+
+uint64_t handleClientMessageHook_Sierra(void *this, uint64_t command, xpc_object_t dict)
+{
+    handleClientMessageHook_common(command, dict);
+    return handleClientMessageOrig_Sierra(this, command, dict);
+}
+
+uint64_t handleClientMessageHook_HighSierra(void *this, void *session, xpc_connection_t connection, xpc_object_t dict)
+{
+    uint64_t command = xpc_dictionary_get_int64(dict, "command");
+    handleClientMessageHook_common(command, dict);
+    return handleClientMessageOrig_HighSierra(this, session, connection, dict);
 }
 
 void __attribute__((constructor)) hook_lsd(void)
 {
     void *symbol = get_symbol("LSXPCClientConnection::handleClientMessage(unsigned long long, void*)");
-    if (!symbol) return;
-    handleClientMessageOrig = hook_function(symbol, (void *) handleClientMessageHook);
+    if (symbol) {
+        handleClientMessageOrig_Sierra = hook_function(symbol, (void *) handleClientMessageHook_Sierra);
+    }
+    else {
+        symbol = get_symbol("LSXPCClient::handleClientMessage(__LSSession*, _xpc_connection_s*, void*)");
+        if (symbol) {
+            handleClientMessageOrig_HighSierra = hook_function(symbol, (void *) handleClientMessageHook_HighSierra);
+        }
+    }
 }
