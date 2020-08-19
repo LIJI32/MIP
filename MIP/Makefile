@@ -63,12 +63,14 @@ install: all
 	sudo cp build/inject /usr/bin/
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
 	sudo cp local.lsdinjector.plist /Library/LaunchDaemons/
+	sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation -bool true
 	(read -p "Inject MIP to launchservicesd without restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd /usr/lib/mip/lsdinjector.dylib; fi;)
 
 uninstall:
 	-sudo rm -rf /usr/lib/mip
 	-sudo rm -rf /usr/include/mip
 	-sudo rm /Library/LaunchDaemons/local.lsdinjector.plist
+	-sudo defaults delete /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation
 	
 clean:
 	rm -rf build
