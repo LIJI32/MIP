@@ -6,6 +6,8 @@
 #include "thread_locking.h"
 #include "hook.h"
 
+#ifdef __x86_64__
+
 static int opcode_size(const uint8_t *code)
 {
     /* 1-byte prefix */
@@ -86,3 +88,10 @@ void *hook_function(uint8_t *old, uint8_t *new)
     
     return unhooked;
 }
+
+#else
+void *hook_function(uint8_t *old, uint8_t *new)
+{
+    return NULL;
+}
+#endif

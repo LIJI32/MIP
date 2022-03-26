@@ -6,6 +6,8 @@
 #include <sys/syslimits.h>
 
 #include <loader/loader.h>
+#import <mach-o/loader.h>
+#import <mach-o/dyld.h>
 #include "inject/inject.h"
 #include "hook/hook.h"
 #include "hook/symbols.h"
@@ -75,7 +77,7 @@ void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
         if (!task) {
             task_for_pid(mach_task_self(), pid, &task);
         }
-        inject_to_task(task, "/usr/lib/mip/loader.dylib");
+        inject_to_task(task, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib");
     }
 }
 
@@ -92,8 +94,18 @@ uint64_t handleClientMessageHook_HighSierra(void *this, void *session, xpc_conne
     return handleClientMessageOrig_HighSierra(this, session, connection, dict);
 }
 
+uint64_t xpc_dictionary_get_int64_hook_BigSur(xpc_object_t dict, const char *key)
+{
+    uint64_t ret = xpc_dictionary_get_int64(dict, key);
+    if (strcmp(key, "command") == 0) {
+        handleClientMessageHook_common(ret, dict);
+    }
+    return ret;
+}
+
 void __attribute__((constructor)) hook_lsd(void)
 {
+#ifndef __arm64__
     void *symbol = get_symbol("LSXPCClientConnection::handleClientMessage(unsigned long long, void*)");
     if (symbol) {
         handleClientMessageOrig_Sierra = hook_function(symbol, (void *) handleClientMessageHook_Sierra);
@@ -103,5 +115,45 @@ void __attribute__((constructor)) hook_lsd(void)
         if (symbol) {
             handleClientMessageOrig_HighSierra = hook_function(symbol, (void *) handleClientMessageHook_HighSierra);
         }
+        else {
+#endif
+            struct mach_header_64 *header = (typeof (header))_dyld_get_image_header(0);
+            const struct load_command *cmd = (typeof(cmd))(header + 1);
+            const struct segment_command_64 *first = NULL;
+            const struct segment_command_64 *data = NULL;
+            for (unsigned i = 0; i < header->ncmds; i++, cmd = (typeof(cmd)) ((char*) cmd + cmd->cmdsize)) {
+                if (cmd->cmd == LC_SEGMENT_64) {
+                    if (!first && ((typeof(first))cmd)->filesize ) {
+                        first = (typeof(first)) cmd;
+                    }
+#ifndef __arm64__
+                    if (strcmp(((typeof(data))cmd)->segname, "__DATA") == 0) {
+#else
+                    if (strcmp(((typeof(data))cmd)->segname, "__DATA_CONST") == 0) {
+#endif
+                        data = (typeof(data))cmd;
+                        break;
+                    }
+                }
+            }
+            uintptr_t slide = (uintptr_t)header - first->vmaddr;
+            void **address = (void **)(data->vmaddr + slide);
+            void **end = (void **)(data->vmaddr + data->vmsize + slide);
+            while (address < end) {
+#if __arm64__
+                if (((uintptr_t)*address & 0xFFFFFFFFFFF) == ((uintptr_t)(xpc_dictionary_get_int64) & 0xFFFFFFFFFFF)) {
+                    mprotect((void *)(((uintptr_t)address) & ~0x3FFF), 0x4000, PROT_READ | PROT_WRITE);
+                    *address = ptrauth_sign_unauthenticated((void *)((uintptr_t)&xpc_dictionary_get_int64_hook_BigSur & 0xFFFFFFFFFFF), ptrauth_key_function_pointer, address);
+                }
+#else
+                if (*address == xpc_dictionary_get_int64) {
+                    *address = xpc_dictionary_get_int64_hook_BigSur;
+                }
+#endif
+                address++;
+            }
+#ifndef __arm64__
+        }
     }
+#endif
 }

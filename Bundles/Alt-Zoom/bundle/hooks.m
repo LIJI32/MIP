@@ -97,10 +97,10 @@ static bool checking_for_fullscreen = false;
         return [self AZH__standardFrame];
     }
     
-    id old_delegate = self->_delegate;
-    self->_delegate = nil;
+    id old_delegate = self.delegate;
+    self.delegate = nil;
     struct CGRect ret = [self AZH__standardFrame];
-    self->_delegate = old_delegate;
+    self.delegate = old_delegate;
     return ret;
 }
 

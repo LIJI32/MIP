@@ -7,6 +7,27 @@ all: build/Alt-Zoom.bundle build/Alt-Zoom.app
 CC := clang
 CFLAGS += -mmacosx-version-min=10.10 -Werror -Wall -I. -I/usr/local/include -g -O3
 LDFLAGS += -mmacosx-version-min=10.10 -framework AppKit
+
+SYSROOT ?= $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
+CFLAGS += -isysroot $(SYSROOT)
+LDFLAGS += -isysroot $(SYSROOT)
+
+BUNDLE_CFLAGS := $(CFLAGS)
+BUNDLE_LDFLAGS := $(LDFLAGS)
+
+BUNDLE_CFLAGS += -arch x86_64
+BUNDLE_LDFLAGS +=  -arch x86_64
+
+ifeq ($(shell uname -m),arm64)
+BUNDLE_CFLAGS += -arch arm64e
+BUNDLE_LDFLAGS += -arch arm64e
+else
+ifeq ($(shell arch -i386 2>&1 | grep Unknown),)
+BUNDLE_CFLAGS += -arch i386
+BUNDLE_LDFLAGS += -arch i386
+endif
+endif
+
 SIGN_IDENTITY ?= "CodeSign"
 
 BUNDLE_SOURCES := $(shell ls bundle/*.m)
@@ -32,7 +53,7 @@ build/settings/%.o: settings/%
 	
 build/bundle/%.o: bundle/%
 	-@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -arch x86_64 -arch i386 -fobjc-arc -c $< -o $@
+	$(CC) $(BUNDLE_CFLAGS) -fobjc-arc -c $< -o $@
 
 build/Alt-Zoom.bundle: build/Alt-Zoom.bundle/Contents/MacOS/Alt-Zoom build/Alt-Zoom.bundle/Contents/Info.plist
 	codesign -fs $(SIGN_IDENTITY) $@
@@ -44,7 +65,7 @@ build/Alt-Zoom.app: build/Alt-Zoom.app/Contents/MacOS/Alt-Zoom\
 
 build/Alt-Zoom.bundle/Contents/MacOS/Alt-Zoom: $(BUNDLE_OBJECTS)
 	-@mkdir -p $(dir $@)
-	$(CC) $(LDFLAGS) -arch x86_64 -arch i386 -bundle /usr/lib/mip/loader.dylib $^ -o $@
+	$(CC) $(BUNDLE_LDFLAGS) -bundle /Library/Apple/System/Library/Frameworks/mip/loader.dylib $^ -o $@
 	
 build/Alt-Zoom.bundle/Contents/%: bundle/%
 	-@mkdir -p $(dir $@)
@@ -72,5 +93,5 @@ clean:
 
 install: all
 	sudo cp -rf build/Alt-Zoom.app /Applications/
-	sudo rm -rf /usr/lib/mip/Bundles/Alt-Zoom.bundle
-	sudo cp -rf build/Alt-Zoom.bundle /usr/lib/mip/Bundles/
+	sudo rm -rf /Library/Apple/System/Library/Frameworks/mip/Bundles/Alt-Zoom.bundle
+	sudo cp -rf build/Alt-Zoom.bundle /Library/Apple/System/Library/Frameworks/mip/Bundles/

@@ -4,7 +4,6 @@
 #include <mach/mach.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/ptrace.h>
 #include <signal.h>
 #include <stdbool.h>
 #include "inject/inject.h"
@@ -85,19 +84,16 @@ int main(int argc, const char **argv)
     }
     
     /* This interrupts blocking system calls to ensure execution. */
-
-    if (ptrace(PT_ATTACH, pid, 0, 0) == -1) {
-        perror("PT_ATTACH failed");
-        fprintf(stderr, "Injection succeeded, but the injected library will only run after the main thread wakes up\n");
-        return errno;
-    }
-    wait(NULL);
-    if (ptrace(PT_DETACH, pid, 0, 0) == -1) {
-        perror("PT_DETACH failed");
-        return errno;
-    }
+    mach_port_t thread;
     
-    fprintf(stderr, "Done injecting to process %d\n", pid);
+    ret = get_thread_port_for_task(task, &thread);
+    if (!ret) {
+        ret = thread_abort(thread);
+    }
+    if (ret) {
+        fprintf(stderr, "Injection succeeded, but the injected library will only run after the main thread wakes up\n");
+        exit(errno);
+    }
     
     return 0;
 }

@@ -4,6 +4,10 @@
 <dict>
 	<key>MIPUseBlacklistMode</key>
 	<true/>
+	<key>MIPExecutableNames</key>
+	<array>
+		<string>Dock</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>Alt-Zoom</string>
 	<key>CFBundleIdentifier</key>

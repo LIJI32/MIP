@@ -18,19 +18,20 @@ MIP has the following advantages when comparing to other injection techniques:
  * Does not modify any system file on disk and can be easily uninstalled without rebooting
  * Does not use `DYLD_INSERT_LIBRARIES`, which may break the system if a file is deleted.
  * Works with both 32- and 64-bit applications, and allows injection to Garbage Collected processes (On El Capitan and older, GC was removed in Sierra)
- * Supports High Sierra (10.13) and dyld3
+ * Supports every macOS major up to and including Monterey
+ * Supports ARM64-based Macs
 
 ## How To Compile
-You will need Xcode's command-line tools, as well as binutils for gobjcopy (`brew install binutils`). You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable!
+You will need Xcode's command-line tools, as well as binutils for `gobjcopy` (`brew install binutils`), which should be linked as `gobjcopy`. You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable! On Intel Macs, you will need the [10.13 SDK](https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX10.13.sdk.tar.xz), to compile the 32-bit portions of MIP.
 
-To compile, simply run `make SIGNING_IDENTITY=<codesign identity>` inside the MIP folder.
+To compile, simply run `make SIGNING_IDENTITY=<codesign identity>` inside the MIP folder, or `make SYSROOT=path/to/MacOSX10.13.sdk SIGNING_IDENTITY=<codesign identity>` on Intel Macs.
 
 ## How To Install/Uninstall
-MIP requires disabling SIP (System Integrity Protection) both during installation and during use.
+MIP requires disabling SIP (System Integrity Protection) both during installation and during use. On ARM64 Macs, you will also need to enable the arm64e preview ABI (`sudo nvram boot-args=-arm64e_preview_abi`)
 
 To install, simply run `make install` inside the MIP folder. You can uninstall by running `make uninstall"`. If you can't get a terminal to open due a misconfiguration of MIP, you can disable it by deleting `/Library/LaunchDaemons/local.lsdinjector.plist` using the recovery boot, which will disable MIP.
 
-Bundles are installed to `/usr/lib/mip/Bundles`.
+Bundles are installed to `/Library/Apple/System/Library/Frameworks/mip/Bundles`.
 
 ### Why Must I Disable SIP?
 SIP not only prevents system files and folders from being modified, but also prevents debugging of any SIP-protected binary. Code injection, by definition, requires static (on filesystem) or dynamic (via debugging) modification of binary files, and MIP obviously cannot operate with such limitations. Even if you do not intend to inject code to Apple provided binaries, MIP operates by injecting code to a system process (launchservicesd), which later injects code to all other processes.
@@ -61,11 +62,19 @@ When the reply is sent, the process resumes running at the injected code, runnin
 
 This method of injection ensures the injected code *always* runs in the same flow and in the same thread.
 
-To make sure all libraries, bundles and user settings and data are accessible from every process the user runs, even under very strict sandboxing, all MIP data is located in /usr/lib/mip. User data is located in /usr/lib/mip/user_data/UID, with the correct owner. A symlink to this folder is created in ~/Library/MIP for each user for convenience, but bundles should use the real path directly.
+To make sure all libraries, bundles and user settings and data are accessible from every process the user runs, even under very strict sandboxing, all MIP data is located in /Library/Apple/System/Library/Frameworks/mip. User data is located in /Library/Apple/System/Library/Frameworks/mip/user_data/UID, with the correct owner. A symlink to this folder is created in ~/Library/MIP for each user for convenience, but bundles should use the real path directly.
 
 ### How The Inject Function Works
 The inject function both lsdinjector.dylib and `inject` use works by modifying the main thread's state to simulate a `call` instruction.
 
-First, it copies a payload bootstrap code to the process (x86 or x86-64 code, depending on the processes), as well as a pointer to dyld's load address and the path of the dylib to inject. Then, it pauses the thread (to ensure atomicity) and modifies its PC/IP, SP and stack contents to simulate a call instruction to the entry function of the payload, and resumes the thread.
+First, it copies a payload bootstrap code to the process (On Intel Macs, x86 or x86-64 code, depending on the processes), as well as a pointer to dyld's load address and the path of the dylib to inject. Then, it pauses the thread (to ensure atomicity) and modifies its PC/IP, SP and stack contents to simulate a call instruction to the entry function of the payload, and resumes the thread.
 
 The payload function is a compiled but unlinked C code, so it can't used any external symbols such as dlopen directly. It is declared in a way that saves and restores all registers, and does additional calls to save and restore the flags register as well. The function uses the dyld pointer provided by the injector to find a pointer to dyld's dlopen function, and then calls it with the provided dylib path.
+
+## Upgrading Notes
+
+If you were using an old version on MIP that used `/usr/lib/mip` as its data directory on macOS Mojave or older, upon upgrading to macOS Catalina or newer MIP bundles that linked against `/usr/lib/mip/loader.dylib` will cease functioning. They must be recompiled and linked against `/Library/Apple/System/Library/Frameworks/mip/loader.dylib` instead.
+
+## Rosetta Support
+
+MIP is currently unable to inject to Intel processes running through Rosetta. This will be addressed in a future version.
