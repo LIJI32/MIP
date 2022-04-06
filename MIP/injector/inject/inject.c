@@ -4,6 +4,7 @@
 #include <mach/mach_vm.h>
 #include <mach/thread_state.h>
 #include <mach/vm_map.h>
+#include <sys/sysctl.h>
 #include <injector/payloads/injected.h>
 #include "inject.h"
 
@@ -175,12 +176,24 @@ kern_return_t get_thread_port_for_task(mach_port_t task, mach_port_t *thread)
     return KERN_SUCCESS;
 }
 
-static bool is_arm(mach_port_t thread)
+static bool is_arm(mach_port_t task)
 {
 #ifdef __x86_64__
     return false;
 #else
-    return true;
+    pid_t pid;
+    pid_for_task(task, &pid);
+    int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, pid};
+    
+    struct kinfo_proc proc;
+    size_t buf_size = sizeof(proc);
+
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), &proc, &buf_size, NULL, 0) < 0) {
+        perror("Failure calling sysctl");
+        return false;
+    }
+    
+    return !(proc.kp_proc.p_flag & P_TRANSLATED);
 #endif
 }
 
@@ -261,7 +274,7 @@ kern_return_t inject_to_task(mach_port_t task, const char *argument)
     mach_vm_address_t code_addr = 0;
     mach_vm_address_t ret_addr = 0;
     bool is_32_bit = false;
-    bool arm = is_arm(thread);
+    bool arm = is_arm(task);
     
     if ((ret = inject_stub_to_task(task, &code_addr, &ret_addr, argument, arm, &is_32_bit))) {
         return ret;
