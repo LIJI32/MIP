@@ -46,11 +46,11 @@ build/injector/payloads/injected_i386.c.dylib: injector/payloads/injected_i386.c
 	mkdir -p $(dir $@)
 		
 	@# Fix the unaligned movaps LLVM bug, and convert iret to ret.
-	$(CC) $(CFLAGS) -shared -arch i386 -Oz $^ -S -o - \
+	$(CC) $(CFLAGS) -arch i386 -Oz $^ -S -o - \
 		| sed "s/^	iret/	ret/g" \
 		| sed "s/^	movaps	%xmm7, -32(%ebp)/	movaps	%xmm7, -40(%ebp)/g" \
 		| sed "s/^	movaps	-32(%ebp), %xmm7/	movaps	-40(%ebp), %xmm7/g" \
-		| clang -Wl,-order_file,injector/payloads/order -shared -nostdlib -xassembler - -arch i386 -o $@
+		| clang -Wl,-order_file,injector/payloads/order -shared -isysroot $(SYSROOT) -xassembler - -arch i386 -o $@
 	
 build/injector/payloads/injected_x86_64.c.dylib: injector/payloads/injected_x86_64.c
 	mkdir -p $(dir $@)
