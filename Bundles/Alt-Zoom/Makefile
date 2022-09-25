@@ -96,3 +96,8 @@ install: all
 	sudo cp -rf build/Alt-Zoom.app /Applications/
 	sudo rm -rf /Library/Apple/System/Library/Frameworks/mip/Bundles/Alt-Zoom.bundle
 	sudo cp -rf build/Alt-Zoom.bundle /Library/Apple/System/Library/Frameworks/mip/Bundles/
+
+uninstall:
+	sudo rm -rf /Library/Apple/System/Library/Frameworks/mip/Bundles/Alt-Zoom.bundle
+	sudo rm -rf /Applications/Alt-Zoom.app
+	
