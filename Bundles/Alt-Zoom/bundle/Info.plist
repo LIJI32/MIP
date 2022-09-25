@@ -3,11 +3,16 @@
 <plist version="1.0">
 <dict>
 	<key>MIPUseBlacklistMode</key>
-	<true/>
-	<key>MIPExecutableNames</key>
+	<false/>
+	<key>MIPBundleNames</key>
 	<array>
-		<string>Dock</string>
+		<string>com.apple.AppKit</string>
 	</array>
+	<key>MIPExcludedBundleNames</key>
+	<array>
+		<string>com.apple.dock</string>
+	</array>
+	
 	<key>CFBundleExecutable</key>
 	<string>Alt-Zoom</string>
 	<key>CFBundleIdentifier</key>
