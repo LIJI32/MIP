@@ -24,7 +24,7 @@ MIP has the following advantages when comparing to other injection techniques:
 ## How To Compile
 You will need Xcode's command-line tools, as well as binutils for `gobjcopy` (`brew install binutils`), which should be linked as `gobjcopy`. You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable! On Intel Macs, you will need the [10.13 SDK](https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX10.13.sdk.tar.xz), to compile the 32-bit portions of MIP.
 
-To compile, simply run `make SIGNING_IDENTITY=<codesign identity>` inside the MIP folder, or `make SYSROOT=path/to/MacOSX10.13.sdk SIGNING_IDENTITY=<codesign identity>` on Intel Macs.
+To compile, simply run `make SIGN_IDENTITY=<codesign identity>` inside the MIP folder, or `make SYSROOT=path/to/MacOSX10.13.sdk SIGN_IDENTITY=<codesign identity>` on Intel Macs.
 
 ## How To Install/Uninstall
 MIP requires disabling SIP (System Integrity Protection) both during installation and during use. On ARM64 Macs, you will also need to enable the arm64e preview ABI (`sudo nvram boot-args=-arm64e_preview_abi`)
@@ -39,7 +39,7 @@ SIP not only prevents system files and folders from being modified, but also pre
 In El Capitan, MIP can be modified to run with SIP enabled as long as it was disabled during installation, due to task ports being leaked to launchservicesd via XPC messages, but this is neither recommended nor supported, and requires modifying launchservicesd's launchd plist file. This potential vulnerability was fixed in Sierra.
 
 ## Sample Bundles
-MIP includes Alt-Zoom as both a useful tweak and a bundle development reference. Alt-Zoom is a bundle that lets you modify the default behavior of the zoom button and the way modifier keys affect its behavior. You can install it by running `make SIGNING_IDENTITY=<codesign identity>` and `make install` in Alt-Zoom's folder in the repository. It has a setting app to control its configuration.
+MIP includes Alt-Zoom as both a useful tweak and a bundle development reference. Alt-Zoom is a bundle that lets you modify the default behavior of the zoom button and the way modifier keys affect its behavior. You can install it by running `make SIGN_IDENTITY=<codesign identity>` and `make install` in Alt-Zoom's folder in the repository. It has a setting app to control its configuration.
 
 ## Injection Filters
 The processes a bundle is loaded into are determined by that bundle's `Info.plist` file. By default MIP filters in a white-list manner. The following keys are used to control filtering:
