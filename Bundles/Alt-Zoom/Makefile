@@ -28,7 +28,8 @@ BUNDLE_LDFLAGS += -arch i386
 endif
 endif
 
-SIGN_IDENTITY ?= "CodeSign"
+SIGN_IDENTITY ?= CodeSign
+CODESIGN_TARGET := codesign -fs "$(SIGN_IDENTITY)"
 
 BUNDLE_SOURCES := $(shell ls bundle/*.m)
 SETTINGS_SOURCES := $(shell ls settings/*.m)
@@ -56,12 +57,12 @@ build/bundle/%.o: bundle/%
 	$(CC) $(BUNDLE_CFLAGS) -fobjc-arc -c $< -o $@
 
 build/Alt-Zoom.bundle: build/Alt-Zoom.bundle/Contents/MacOS/Alt-Zoom build/Alt-Zoom.bundle/Contents/Info.plist
-	codesign -fs $(SIGN_IDENTITY) $@
+	$(CODESIGN_TARGET) $@
 build/Alt-Zoom.app: build/Alt-Zoom.app/Contents/MacOS/Alt-Zoom\
                     build/Alt-Zoom.app/Contents/Info.plist\
                     build/Alt-Zoom.app/Contents/Resources/Base.lproj/MainMenu.nib\
                     build/Alt-Zoom.app/Contents/Resources/AppIcon.icns
-	codesign -fs $(SIGN_IDENTITY) $@
+	$(CODESIGN_TARGET) $@
 
 build/Alt-Zoom.bundle/Contents/MacOS/Alt-Zoom: $(BUNDLE_OBJECTS)
 	-@mkdir -p $(dir $@)
