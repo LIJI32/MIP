@@ -44,7 +44,11 @@ MIP includes Alt-Zoom as both a useful tweak and a bundle development reference.
 ## Injection Filters
 The processes a bundle is loaded into are determined by that bundle's `Info.plist` file. By default MIP filters in a white-list manner. The following keys are used to control filtering:
 
- * `MIPBundleNames` - Array, controls the bundle names to inject to (or to ignore in black-list mode).
+ * `MIPBundleNames` - Array, lists bundle names to inject alongside (or to ignore in black-list mode).
+    * This can be either an app or framework bundle identifier, such as `com.apple.AppKit`
+ * `MIPExcludedBundleNames` - Array, lists bundle names to _never_ inject alongside.
+    * Takes precedence over all other filters
+    * Not affected by black-list mode
  * `MIPExecutableNames` - Array, controls the executable basenames to inject to (or to ignore in black-list mode).
  * `MIPUseBlacklistMode` - Boolean, sets the filtering mode to black-list mode if true.
  * `MIPSupportsGC` - Boolean, tells MIP the injected bundle supports Garbage Collection and may be injected to GC-enabled processes. If incorrectly set to true while the injected bundle does not actually support GC, the injected bundle will crash the process. Garbage Collection is not available in macOS Sierra's Objective-C runtime, no need to support it if you're targeting Sierra and newer.
