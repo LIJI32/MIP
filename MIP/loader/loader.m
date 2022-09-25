@@ -23,15 +23,23 @@ const char *MIP_user_data_path(void)
 BOOL should_inject_bundle(
     NSBundle *tweakBundle,
     NSString *mainExecutableName,
-    NSArray<NSString *> *disabled_bundles
+    NSArray<NSString *> *globalyDisabledBundles
 ) {
     NSDictionary *plist = tweakBundle.infoDictionary;
     BOOL blacklistMode = [plist[@"MIPUseBlacklistMode"] boolValue];
     
     // Skip tweak if it is globally disabled
-    if ([disabled_bundles containsObject:tweakBundle.bundleIdentifier]) {
+    if ([globalyDisabledBundles containsObject:tweakBundle.bundleIdentifier]) {
         // Not affected by blacklist mode
         return NO;
+    }
+    
+    // Skip tweak if a matching bundle is excluded
+    for (NSString *entry in plist[@"MIPExcludedBundleNames"]) {
+        if (CFBundleGetBundleWithIdentifier((CFStringRef)entry)) {
+            // Match found; skip loading
+            return NO;
+        }
     }
     
     // Check if process matches bundle filter
