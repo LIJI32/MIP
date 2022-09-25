@@ -14,7 +14,7 @@ ARCH1 := x86_64
 ARCH2 := i386
 endif
 
-SIGN_IDENTITY ?= "CodeSign"
+SIGN_IDENTITY ?= CodeSign
 
 all: build/lsdinjector.dylib build/loader.dylib build/inject local.lsdinjector.plist
 
@@ -24,16 +24,16 @@ build/lsdinjector.dylib: build/injector/lsd_injector.c.o \
 								  build/injector/hook/thread_locking.c.o \
 								  build/injector/injector.o
 	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -framework CoreSymbolication -lbsm -shared -o $@
-	codesign -s $(SIGN_IDENTITY) $@
+	codesign -s "$(SIGN_IDENTITY)" $@
 
 build/loader.dylib: loader/loader.m
 	$(CC) $(CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) -arch $(ARCH2) $< -o $@
-	codesign -s $(SIGN_IDENTITY) $@
+	codesign -s "$(SIGN_IDENTITY)" $@
 
 build/inject: build/injector/injector.o build/injector/main.c.o
 	mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) $^ -o $@ -arch $(ARCH1)
-	codesign -s $(SIGN_IDENTITY) $@
+	codesign -s "$(SIGN_IDENTITY)" $@
 
 build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin 
 	ld -r $(filter %.o,$^) -o $@ -sectcreate __INJ_$(ARCH1) __inj_$(ARCH1) build/injector/payloads/injected_$(ARCH1).c.bin -sectcreate __INJ_$(ARCH2) __inj_$(ARCH2) build/injector/payloads/injected_$(ARCH2).c.bin
