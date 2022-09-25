@@ -20,70 +20,91 @@ const char *MIP_user_data_path(void)
     return user_data_path;
 }
 
+BOOL should_inject_bundle(
+    NSBundle *tweakBundle,
+    NSString *mainExecutableName,
+    NSArray<NSString *> *disabled_bundles
+) {
+    NSDictionary *plist = tweakBundle.infoDictionary;
+    BOOL blacklistMode = [plist[@"MIPUseBlacklistMode"] boolValue];
+    
+    // Skip tweak if it is globally disabled
+    if ([disabled_bundles containsObject:tweakBundle.bundleIdentifier]) {
+        // Not affected by blacklist mode
+        return NO;
+    }
+    
+    // Check if process matches bundle filter
+    for (NSString *entry in plist[@"MIPBundleNames"]) {
+        if (CFBundleGetBundleWithIdentifier((CFStringRef)entry)) {
+            // Match found; invert if blacklist mode enabled
+            return blacklistMode ? NO : YES;
+        }
+    }
+    
+    // Check if process matches executable filter
+    for (NSString *entry in plist[@"MIPExecutableNames"]) {
+        if ([mainExecutableName isEqualToString:entry]) {
+            // Match found; invert if blacklist mode enabled
+            return blacklistMode ? NO : YES;
+        }
+    }
+    
+    return blacklistMode ? YES : NO;
+}
+
 static void __attribute__((constructor)) loader(void)
 {
     @autoreleasepool {
         @try {
-            NSDictionary *user_preferences = [NSKeyedUnarchiver unarchiveObjectWithData:
-                                              [NSData dataWithContentsOfFile:
-                                               [@(MIP_user_data_path()) stringByAppendingPathComponent:@"settings.plist"]]];
+            NSDictionary *user_preferences = [NSDictionary dictionaryWithContentsOfFile:
+                [@(MIP_user_data_path()) stringByAppendingPathComponent:@"settings.plist"]
+            ];
 
-            NSFileManager *fm = [NSFileManager defaultManager];
+            NSFileManager *fm = NSFileManager.defaultManager;
             
-            NSArray *bundles = [fm contentsOfDirectoryAtURL:[NSURL fileURLWithPath:@GLOBAL_DATA_ROOT "/Bundles"]
-                                 includingPropertiesForKeys:nil
-                                                    options:NSDirectoryEnumerationSkipsHiddenFiles
-                                                      error:nil
-                                ];
+            NSURL *tweakBundlesURL = [NSURL fileURLWithPath:@GLOBAL_DATA_ROOT "/Bundles"];
+            NSArray *tweakBundles = [fm contentsOfDirectoryAtURL:tweakBundlesURL
+                                      includingPropertiesForKeys:nil
+                                                         options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                           error:nil];
             
-            NSString *bundle_id = [[NSBundle mainBundle] bundleIdentifier];
             char executable_path[PATH_MAX];
             uint32_t executable_path_length = sizeof(executable_path);
             _NSGetExecutablePath(executable_path, &executable_path_length);
             
-            NSString *executable_name = [@(executable_path) lastPathComponent];
+            NSString *executable_name = @(executable_path).lastPathComponent;
             NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
-            for (NSURL *bundle_url in bundles) {
-                bool should_inject = false;
-                NSBundle *bundle = [NSBundle bundleWithURL:bundle_url];
-                if ([disabled_bundles containsObject:bundle.bundleIdentifier]) {
-                    continue;
-                }
-                NSDictionary *plist = [bundle infoDictionary];
-                for (NSString *possible_bundle_id in plist[@"MIPBundleNames"]) {
-                    if ([bundle_id isEqualToString:possible_bundle_id]) {
-                        should_inject = true;
-                        break;
-                    }
-                }
+            
+            // Enumerate tweak bundles and determine whether or not to load each
+            for (NSURL *bundle_url in tweakBundles) {
                 
-                if (!should_inject) {
-                    for (NSString *possible_executable_name in plist[@"MIPExecutableNames"]) {
-                        if ([executable_name isEqualToString:possible_executable_name]) {
-                            should_inject = true;
-                            break;
-                        }
-                    }
-                }
-                
-                if ([plist[@"MIPUseBlacklistMode"] boolValue]) {
-                    should_inject = !should_inject;
-                }
-                
+                NSBundle *tweakBundle = [NSBundle bundleWithURL:bundle_url];
+                bool should_inject = should_inject_bundle(
+                    tweakBundle, executable_name, disabled_bundles
+                );
+
                 if (should_inject) {
-                    if (objc_collectingEnabled() && ![plist[@"MIPSupportsGC"] boolValue]) {
-                        NSLog(@"MIP: Bundle %@ was not loaded: %s required GC", bundle.bundlePath, executable_path);
+                    BOOL tweakSupportsGC = [tweakBundle.infoDictionary[@"MIPSupportsGC"] boolValue];
+                    if (objc_collectingEnabled() && !tweakSupportsGC) {
+                        // Skip loading if tweak doesn't support GC
+                        NSLog(@"MIP: Bundle %@ was not loaded: %s required GC",
+                            tweakBundle.bundlePath, executable_path
+                        );
                     }
                     else {
+                        // Attempt loading tweak bundle
                         NSError *error = nil;
-                        if (![bundle loadAndReturnError:&error]) {
-                            NSLog(@"MIP: Bundle %@ was not loaded: %@", bundle.bundlePath, error);
+                        if (![tweakBundle loadAndReturnError:&error]) {
+                            NSLog(@"MIP: Bundle %@ was not loaded: %@", tweakBundle.bundlePath, error);
                         }
                     }
                 }
             }
         } @catch (NSException *exception) {
-            NSLog(@"MIP: Aborting load due to exception: %@\n%@", exception, [exception callStackSymbols]);
+            NSLog(@"MIP: Aborting load due to exception: %@\n%@",
+                exception, exception.callStackSymbols
+            );
         }
     }
 }
