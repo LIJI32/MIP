@@ -20,25 +20,24 @@ const char *MIP_user_data_path(void)
     return user_data_path;
 }
 
-BOOL should_inject_bundle(
-    NSBundle *tweakBundle,
-    NSString *mainExecutableName,
-    NSArray<NSString *> *globalyDisabledBundles
-) {
+bool should_inject_bundle(NSBundle *tweakBundle,
+                          NSString *mainExecutableName,
+                          NSArray<NSString *> *globalyDisabledBundles)
+{
     NSDictionary *plist = tweakBundle.infoDictionary;
-    BOOL blacklistMode = [plist[@"MIPUseBlacklistMode"] boolValue];
+    bool blacklistMode = [plist[@"MIPUseBlacklistMode"] boolValue];
     
     // Skip tweak if it is globally disabled
     if ([globalyDisabledBundles containsObject:tweakBundle.bundleIdentifier]) {
         // Not affected by blacklist mode
-        return NO;
+        return false;
     }
     
     // Skip tweak if a matching bundle is excluded
     for (NSString *entry in plist[@"MIPExcludedBundleNames"]) {
         if (CFBundleGetBundleWithIdentifier((CFStringRef)entry)) {
             // Match found; skip loading
-            return NO;
+            return false;
         }
     }
     
@@ -46,7 +45,7 @@ BOOL should_inject_bundle(
     for (NSString *entry in plist[@"MIPBundleNames"]) {
         if (CFBundleGetBundleWithIdentifier((CFStringRef)entry)) {
             // Match found; invert if blacklist mode enabled
-            return blacklistMode ? NO : YES;
+            return !blacklistMode;
         }
     }
     
@@ -54,11 +53,12 @@ BOOL should_inject_bundle(
     for (NSString *entry in plist[@"MIPExecutableNames"]) {
         if ([mainExecutableName isEqualToString:entry]) {
             // Match found; invert if blacklist mode enabled
-            return blacklistMode ? NO : YES;
+            return !blacklistMode;
         }
     }
     
-    return blacklistMode ? YES : NO;
+    // No match find, return true if we're in blacklist mode
+    return blacklistMode;
 }
 
 static void __attribute__((constructor)) loader(void)
@@ -88,17 +88,16 @@ static void __attribute__((constructor)) loader(void)
             for (NSURL *bundle_url in tweakBundles) {
                 
                 NSBundle *tweakBundle = [NSBundle bundleWithURL:bundle_url];
-                bool should_inject = should_inject_bundle(
-                    tweakBundle, executable_name, disabled_bundles
-                );
+                bool should_inject = should_inject_bundle(tweakBundle,
+                                                          executable_name,
+                                                          disabled_bundles);
 
                 if (should_inject) {
-                    BOOL tweakSupportsGC = [tweakBundle.infoDictionary[@"MIPSupportsGC"] boolValue];
+                    bool tweakSupportsGC = [tweakBundle.infoDictionary[@"MIPSupportsGC"] boolValue];
                     if (objc_collectingEnabled() && !tweakSupportsGC) {
                         // Skip loading if tweak doesn't support GC
                         NSLog(@"MIP: Bundle %@ was not loaded: %s required GC",
-                            tweakBundle.bundlePath, executable_path
-                        );
+                              tweakBundle.bundlePath, executable_path);
                     }
                     else {
                         // Attempt loading tweak bundle
@@ -109,10 +108,10 @@ static void __attribute__((constructor)) loader(void)
                     }
                 }
             }
-        } @catch (NSException *exception) {
+        }
+        @catch (NSException *exception) {
             NSLog(@"MIP: Aborting load due to exception: %@\n%@",
-                exception, exception.callStackSymbols
-            );
+                  exception, exception.callStackSymbols);
         }
     }
 }
