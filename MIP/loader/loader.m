@@ -83,6 +83,7 @@ static void __attribute__((constructor)) loader(void)
             
             NSString *executable_name = @(executable_path).lastPathComponent;
             NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
+            NSLog(@"MIP load: %@", executable_name);
             
             // Enumerate tweak bundles and determine whether or not to load each
             for (NSURL *bundle_url in tweakBundles) {
