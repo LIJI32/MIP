@@ -6,6 +6,8 @@ CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarat
 SYSROOT ?= $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
 CFLAGS += -isysroot $(SYSROOT)
 
+SUBSTITUTE_CFLAGS := -Ithird-party/substitute/lib -Ithird-party/substitute/vendor
+
 ifeq ($(shell uname -m),arm64)
 ARCH1 := arm64e
 ARCH2 := x86_64
@@ -27,8 +29,22 @@ build/lsdinjector.dylib: build/injector/lsd_injector.c.o \
 	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -framework CoreSymbolication -lbsm -shared -o $@
 	$(CODESIGN_TARGET) $@
 
-build/loader.dylib: loader/loader.m
-	$(CC) $(CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) -arch $(ARCH2) $< -o $@
+build/loader.dylib: loader/loader.m \
+								  third-party/substitute/lib/cbit/vec.c \
+								  third-party/substitute/lib/darwin/objc.c \
+								  third-party/substitute/lib/darwin/find-syms.c \
+								  third-party/substitute/lib/darwin/inject.c \
+								  third-party/substitute/generated/darwin-inject-asm.S \
+								  third-party/substitute/lib/darwin/interpose.c \
+								  third-party/substitute/lib/darwin/objc-asm.S \
+								  third-party/substitute/lib/darwin/read.c \
+								  third-party/substitute/lib/darwin/substrate-compat.c \
+								  third-party/substitute/lib/darwin/execmem.c \
+								  third-party/substitute/lib/jump-dis.c \
+								  third-party/substitute/lib/transform-dis.c \
+								  third-party/substitute/lib/hook-functions.c \
+								  third-party/substitute/lib/strerror.c
+	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) -arch $(ARCH2) $^ -o $@
 	$(CODESIGN_TARGET) $@
 
 build/inject: build/injector/injector.o build/injector/main.c.o

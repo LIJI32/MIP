@@ -83,7 +83,7 @@ static void __attribute__((constructor)) loader(void)
             
             NSString *executable_name = @(executable_path).lastPathComponent;
             NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
-            NSLog(@"MIP load: %@", executable_name);
+            NSLog(@"MIP: load %@", executable_name);
             
             // Enumerate tweak bundles and determine whether or not to load each
             for (NSURL *bundle_url in tweakBundles) {
@@ -105,6 +105,8 @@ static void __attribute__((constructor)) loader(void)
                         NSError *error = nil;
                         if (![tweakBundle loadAndReturnError:&error]) {
                             NSLog(@"MIP: Bundle %@ was not loaded: %@", tweakBundle.bundlePath, error);
+                        } else {
+                            NSLog(@"MIP: Bundle %@ was loaded", tweakBundle.bundlePath);
                         }
                     }
                 }
