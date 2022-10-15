@@ -15,17 +15,12 @@ LDFLAGS += -isysroot $(SYSROOT)
 BUNDLE_CFLAGS := $(CFLAGS)
 BUNDLE_LDFLAGS := $(LDFLAGS)
 
-BUNDLE_CFLAGS += -arch x86_64
-BUNDLE_LDFLAGS +=  -arch x86_64
-
 ifeq ($(shell uname -m),arm64)
 BUNDLE_CFLAGS += -arch arm64e
 BUNDLE_LDFLAGS += -arch arm64e
 else
-ifeq ($(shell arch -i386 2>&1 | grep Unknown),)
-BUNDLE_CFLAGS += -arch i386
-BUNDLE_LDFLAGS += -arch i386
-endif
+BUNDLE_CFLAGS += -arch x86_64
+BUNDLE_LDFLAGS += -arch x86_64
 endif
 
 SIGN_IDENTITY ?= CodeSign
