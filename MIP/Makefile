@@ -16,7 +16,7 @@ endif
 LOADER_SOURCES := loader/loader.m
 ifeq ($(SUBSTITUTE),YES)
 SUBSTITUTE_CFLAGS := -Ithird-party/substitute/lib -Ithird-party/substitute/vendor
-LOADER_SOURCES := $(shell find third-party/substitute -name "*.c" -o -name "*.S")
+LOADER_SOURCES += $(shell find third-party/substitute -name "*.c" -o -name "*.S")
 endif
 
 ifeq ($(shell uname -m),arm64)
