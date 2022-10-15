@@ -105,7 +105,8 @@ static void __attribute__((constructor)) loader(void)
                         NSError *error = nil;
                         if (![tweakBundle loadAndReturnError:&error]) {
                             NSLog(@"MIP: Bundle %@ was not loaded: %@", tweakBundle.bundlePath, error);
-                        } else {
+                        }
+                        else {
                             NSLog(@"MIP: Bundle %@ was loaded", tweakBundle.bundlePath);
                         }
                     }
