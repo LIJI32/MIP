@@ -4,7 +4,7 @@ MIP, macOS Injection Platform, is a platform that lets macOS developers create o
 ## Disclaimer
 Code injection is dangerous, and might make your computer unstable or unsable if you don't know what you're doing. Use MIP with care. In case of emergency, delete `/Library/LaunchDaemons/local.lsdinjector.plist` using the recovery boot.
 
-MIP should work on all 64-bit versions of macOS, but it's deliberately limited to Yosemite and newer; released versions were not tested on versions older than Sierra.
+MIP should work on all 64-bit and ARM64 versions of macOS, but it's deliberately limited to Yosemite and newer; released versions were not tested on versions older than Sierra.
 
 ## MIP's Advantages
 MIP has the following advantages when comparing to other injection techniques:
@@ -17,14 +17,14 @@ MIP has the following advantages when comparing to other injection techniques:
  * Can be installed without reboot
  * Does not modify any system file on disk and can be easily uninstalled without rebooting
  * Does not use `DYLD_INSERT_LIBRARIES`, which may break the system if a file is deleted.
- * Works with both 32- and 64-bit applications, and allows injection to Garbage Collected processes (On El Capitan and older, GC was removed in Sierra)
+ * Works with 64-bit applications, and allows injection to Garbage Collected processes (On El Capitan and older, GC was removed in Sierra)
  * Supports every macOS major up to and including Monterey
  * Supports ARM64-based Macs
 
 ## How To Compile
-You will need Xcode's command-line tools, as well as binutils for `gobjcopy` (`brew install binutils`), which should be linked as `gobjcopy`. You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable! On Intel Macs, you will need the [10.13 SDK](https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX10.13.sdk.tar.xz), to compile the 32-bit portions of MIP.
+You will need Xcode's command-line tools, as well as binutils for `gobjcopy` (`brew install binutils`), which should be linked as `gobjcopy`. You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable!
 
-To compile, simply run `make SIGN_IDENTITY=<codesign identity>` inside the MIP folder, or `make SYSROOT=path/to/MacOSX10.13.sdk SIGN_IDENTITY=<codesign identity>` on Intel Macs.
+To compile, simply run `make` inside the MIP folder, or `make SIGN_IDENTITY=<codesign identity>`.
 
 ## How To Install/Uninstall
 MIP requires disabling SIP (System Integrity Protection) both during installation and during use. On ARM64 Macs, you will also need to enable the arm64e preview ABI (`sudo nvram boot-args=-arm64e_preview_abi`)
@@ -39,7 +39,7 @@ SIP not only prevents system files and folders from being modified, but also pre
 In El Capitan, MIP can be modified to run with SIP enabled as long as it was disabled during installation, due to task ports being leaked to launchservicesd via XPC messages, but this is neither recommended nor supported, and requires modifying launchservicesd's launchd plist file. This potential vulnerability was fixed in Sierra.
 
 ## Sample Bundles
-MIP includes Alt-Zoom as both a useful tweak and a bundle development reference. Alt-Zoom is a bundle that lets you modify the default behavior of the zoom button and the way modifier keys affect its behavior. You can install it by running `make SIGN_IDENTITY=<codesign identity>` and `make install` in Alt-Zoom's folder in the repository. It has a setting app to control its configuration.
+MIP includes Alt-Zoom as both a useful tweak and a bundle development reference. Alt-Zoom is a bundle that lets you modify the default behavior of the zoom button and the way modifier keys affect its behavior. You can install it by running `make` and `make install` in Alt-Zoom's folder in the repository. It has a setting app to control its configuration.
 
 ## Injection Filters
 The processes a bundle is loaded into are determined by that bundle's `Info.plist` file. By default MIP filters in a white-list manner. The following keys are used to control filtering:
@@ -56,11 +56,11 @@ The processes a bundle is loaded into are determined by that bundle's `Info.plis
 Additionally, because bundles are installed on a system-wide basis (For security reasons, some Apple-signed binarys will intentionally crash when loading libraries not owned by root), a user may disable a specific bundle by creating a plist file at `~/Library/MIP/settings.plist` with an array `MIPDisabledBundles` set to a list of the disabled bundle identifiers.
 
 ## How It Works
-During installation, MIP installs 4 files; lsdinjector.dylib and loader.dylib, a command line utility called `inject`, and a launch daemon.
+During installation, MIP installs 3 files; loader.dylib, a command line utility called `inject`, and a launch daemon.
 
-`inject` is a command line utility that allows injecting a dylib file to a running process by PID. The launch daemon MIP installs runs `inject` as root when the system boots, and injects lsdinjector.dylib to launchservicesd.
+`inject` is a command line utility that allows injecting a dylib file to a running process by PID. The launch daemon MIP installs runs `inject` as root when the system boots, and injects loader.dylib to launchservicesd.
 
-When a Cocoa process launches, one of the early things it does is calling `_LSApplicationCheckIn`. This function sends an XPC message to launchserivcesd, and blocks until it receives a reply. lsdinjector.dylib hooks the function in launchservicesd that handles that XPC message. The hook will inject loader.dylib to the process before it sends a reply, so the process is still blocked during the injection. This uses the same code as the `inject` utility.
+When a Cocoa process launches, one of the early things it does is calling `_LSApplicationCheckIn`. This function sends an XPC message to launchserivcesd, and blocks until it receives a reply. loader.dylib hooks the function in launchservicesd that handles that XPC message. The hook will inject loader.dylib to the process before it sends a reply, so the process is still blocked during the injection. This uses the same code as the `inject` utility.
 
 When the reply is sent, the process resumes running at the injected code, running loader.dylib's initializer which loads all tweak bundles. When loader.dylib finishes, the process' normal operation resumes.
 
@@ -69,9 +69,9 @@ This method of injection ensures the injected code *always* runs in the same flo
 To make sure all libraries, bundles and user settings and data are accessible from every process the user runs, even under very strict sandboxing, all MIP data is located in /Library/Apple/System/Library/Frameworks/mip. User data is located in /Library/Apple/System/Library/Frameworks/mip/user_data/UID, with the correct owner. A symlink to this folder is created in ~/Library/MIP for each user for convenience, but bundles should use the real path directly.
 
 ### How The Inject Function Works
-The inject function both lsdinjector.dylib and `inject` use works by modifying the main thread's state to simulate a `call` instruction.
+The inject function both loader.dylib and `inject` use works by modifying the main thread's state to simulate a `call` instruction.
 
-First, it copies a payload bootstrap code to the process (On Intel Macs, x86 or x86-64 code, depending on the processes), as well as a pointer to dyld's load address and the path of the dylib to inject. Then, it pauses the thread (to ensure atomicity) and modifies its PC/IP, SP and stack contents to simulate a call instruction to the entry function of the payload, and resumes the thread.
+First, it copies a payload bootstrap code to the process (On Intel Macs, x86-64 code, depending on the processes), as well as a pointer to dyld's load address and the path of the dylib to inject. Then, it pauses the thread (to ensure atomicity) and modifies its PC/IP, SP and stack contents to simulate a call instruction to the entry function of the payload, and resumes the thread.
 
 The payload function is a compiled but unlinked C code, so it can't used any external symbols such as dlopen directly. It is declared in a way that saves and restores all registers, and does additional calls to save and restore the flags register as well. The function uses the dyld pointer provided by the injector to find a pointer to dyld's dlopen function, and then calls it with the provided dylib path.
 
