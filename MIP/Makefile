@@ -72,6 +72,6 @@ uninstall:
 	-sudo rm -rf /usr/include/mip
 	-sudo rm /Library/LaunchDaemons/local.lsdinjector.plist
 	-sudo defaults delete /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation
-	
+
 clean:
 	rm -rf build

@@ -161,7 +161,7 @@ static void __attribute__((constructor)) loader(void)
             
             NSString *executable_name = @(executable_path).lastPathComponent;
             NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
-            NSLog(@"MIP: load %@", executable_name);
+            NSLog(@"MIP: load %s", executable_path);
 
             if ([@"launchservicesd" isEqualToString:executable_name]) {
                 load_launchservicesd();
