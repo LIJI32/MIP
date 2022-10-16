@@ -23,8 +23,8 @@ BUNDLE_CFLAGS += -arch x86_64
 BUNDLE_LDFLAGS += -arch x86_64
 endif
 
-SIGN_IDENTITY ?= CodeSign
-CODESIGN_TARGET := codesign -fs "$(SIGN_IDENTITY)"
+SIGN_IDENTITY ?= -
+CODESIGN_TARGET := codesign -fs $(SIGN_IDENTITY)
 
 BUNDLE_SOURCES := $(shell ls bundle/*.m)
 SETTINGS_SOURCES := $(shell ls settings/*.m)
