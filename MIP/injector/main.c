@@ -3,8 +3,6 @@
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <signal.h>
 #include <stdbool.h>
 #include "inject/inject.h"
 
@@ -22,7 +20,7 @@ int main(int argc, const char **argv)
     }
     
     mach_port_t task = 0;
-    int pid = atoi(argv[1]);
+    int pid = (int)strtol(argv[1], (char **)NULL, 10);
     if (pid == 0) {
         do {
             fprintf(stderr, "Searching...\n");

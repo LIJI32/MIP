@@ -15,8 +15,8 @@ else
 ARCH := x86_64
 endif
 
-SIGN_IDENTITY ?= CodeSign
-CODESIGN_TARGET := codesign -s "$(SIGN_IDENTITY)"
+SIGN_IDENTITY ?= -
+CODESIGN_TARGET := codesign -s $(SIGN_IDENTITY)
 
 all: build/loader.dylib build/inject local.lsdinjector.plist
 

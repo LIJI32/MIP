@@ -93,7 +93,7 @@ static int64_t new_xpc_dictionary_get_int64(xpc_object_t dict, const char *key)
     return ret;
 }
 
-static void load_launchservicesd(void)
+static void inject_launchservicesd(void)
 {
     MSHookFunction(xpc_dictionary_get_int64, new_xpc_dictionary_get_int64, (void**)&old_xpc_dictionary_get_int64);
 }
@@ -143,6 +143,18 @@ static void __attribute__((constructor)) loader(void)
 {
     @autoreleasepool {
         @try {
+            char executable_path[PATH_MAX];
+            uint32_t executable_path_length = sizeof(executable_path);
+            _NSGetExecutablePath(executable_path, &executable_path_length);
+
+            NSString *executable_name = @(executable_path).lastPathComponent;
+            NSLog(@"MIP: inject %s", executable_path);
+
+            if ([@"launchservicesd" isEqualToString:executable_name]) {
+                inject_launchservicesd();
+                return;
+            }
+
             NSDictionary *user_preferences = [NSDictionary dictionaryWithContentsOfFile:
                 [@(MIP_user_data_path()) stringByAppendingPathComponent:@"settings.plist"]
             ];
@@ -154,21 +166,10 @@ static void __attribute__((constructor)) loader(void)
                                       includingPropertiesForKeys:nil
                                                          options:NSDirectoryEnumerationSkipsHiddenFiles
                                                            error:nil];
-            
-            char executable_path[PATH_MAX];
-            uint32_t executable_path_length = sizeof(executable_path);
-            _NSGetExecutablePath(executable_path, &executable_path_length);
-            
-            NSString *executable_name = @(executable_path).lastPathComponent;
-            NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
-            NSLog(@"MIP: load %s", executable_path);
 
-            if ([@"launchservicesd" isEqualToString:executable_name]) {
-                load_launchservicesd();
-                return;
-            }
+            NSArray *disabled_bundles = user_preferences[@"MIPDisabledBundles"];
             
-            // Enumerate tweak bundles and determine whether or not to load each
+            // Enumerate tweak bundles and determine whether to load each
             for (NSURL *bundle_url in tweakBundles) {
                 
                 NSBundle *tweakBundle = [NSBundle bundleWithURL:bundle_url];
