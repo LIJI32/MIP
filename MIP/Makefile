@@ -2,7 +2,7 @@
 .PHONY: all install uninstall
 
 LDFLAGS := -g -mmacosx-version-min=10.10 -lc -F/System/Library/PrivateFrameworks
-CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations
+CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations -Wno-interrupt-service-routine
 SYSROOT ?= $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
 CFLAGS += -isysroot $(SYSROOT)
 SUBSTITUTE ?= YES
@@ -33,11 +33,8 @@ CODESIGN_TARGET := codesign -s "$(SIGN_IDENTITY)"
 all: build/lsdinjector.dylib build/loader.dylib build/inject local.lsdinjector.plist
 
 build/lsdinjector.dylib: build/injector/lsd_injector.c.o \
-								  build/injector/hook/hook.c.o \
-								  build/injector/hook/symbols.c.o \
-								  build/injector/hook/thread_locking.c.o \
 								  build/injector/injector.o
-	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -framework CoreSymbolication -lbsm -shared -o $@
+	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -lbsm -shared -o $@
 	$(CODESIGN_TARGET) $@
 
 build/loader.dylib: $(LOADER_SOURCES)
@@ -49,7 +46,7 @@ build/inject: build/injector/injector.o build/injector/main.c.o
 	$(CC) $(LDFLAGS) $^ -o $@ -arch $(ARCH1)
 	$(CODESIGN_TARGET) $@
 
-build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin 
+build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin
 	ld -r $(filter %.o,$^) -o $@ -sectcreate __INJ_$(ARCH1) __inj_$(ARCH1) build/injector/payloads/injected_$(ARCH1).c.bin -sectcreate __INJ_$(ARCH2) __inj_$(ARCH2) build/injector/payloads/injected_$(ARCH2).c.bin
 	
 build/%.o: %
