@@ -78,6 +78,7 @@ void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
             task_for_pid(mach_task_self(), pid, &task);
         }
         inject_to_task(task, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib");
+        mach_port_destroy(mach_task_self(), task);
     }
 }
 
