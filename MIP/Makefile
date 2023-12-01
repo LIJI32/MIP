@@ -93,6 +93,14 @@ install: all
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
 	sudo cp local.lsdinjector.plist /Library/LaunchDaemons/
 	sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation -bool true
+	if nvram boot-args | grep -v tss_should_crash=0; then \
+		sudo nvram boot-args="`nvram boot-args | cut -c 11-` tss_should_crash=0"; \
+		if nvram boot-args | grep -v tss_should_crash=0; then\
+			echo "Failed to add tss_should_crash=0. If you're running macOS Ventura or newer in a VM, you will need to update this bootarg manually."; \
+		else \
+			echo "Added tss_should_crash=0 boot argument. If you're running macOS Ventura or newer, a reboot is required"; \
+		fi \
+	fi
 	(read -p "Inject MIP to launchservicesd without a restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd /Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib; fi;)
 
 uninstall:
