@@ -7,9 +7,9 @@
 
 /* These values are overwritten on a per-injection basis by the injector */
 /* Must not be defined as consts, or the compiler will optimize them. */
-struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_64;
+__attribute__((section("__TEXT,__const"))) struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_64;
 
-char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
+__attribute__((section("__TEXT,__const"))) char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
 
 static const struct mach_header_64 *get_header_by_path(const char *name)
 {
@@ -75,7 +75,7 @@ void c_entry(void)
 
     
     if ($dlopen) {
-        $dlopen(argument, RTLD_NOW);
+        $dlopen((const char *)argument, RTLD_NOW);
     }
 }
 
@@ -156,9 +156,7 @@ void __attribute__((naked)) entry(void)
 
 /* Taken from Apple's libc */
 
-int 
-strcmp(s1, s2)
-const char *s1, *s2;
+int strcmp(const char *s1, const char *s2)
 {
     while (*s1 == *s2++)
         if (*s1++ == 0)

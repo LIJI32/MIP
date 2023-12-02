@@ -57,19 +57,19 @@ build/injector/payloads/injected_i386.c.dylib: injector/payloads/injected_i386.c
 	mkdir -p $(dir $@)
 		
 	@# Fix the unaligned movaps LLVM bug, and convert iret to ret.
-	$(CC) $(CFLAGS) -arch i386 -Oz $^ -S -o - \
+	$(CC) $(CFLAGS) -fno-exceptions -arch i386 -Oz $^ -S -o - \
 		| sed "s/^	iret/	ret/g" \
 		| sed "s/^	movaps	%xmm7, -32(%ebp)/	movaps	%xmm7, -40(%ebp)/g" \
 		| sed "s/^	movaps	-32(%ebp), %xmm7/	movaps	-40(%ebp), %xmm7/g" \
-		| clang -Wl,-order_file,injector/payloads/order -shared -isysroot $(SYSROOT) -xassembler - -arch i386 -o $@
+		| clang -Wl,-sectalign,__TEXT,__text,4000 -Wl,-order_file,injector/payloads/order -shared -isysroot $(SYSROOT) -xassembler - -arch i386 -o $@
 	
 build/injector/payloads/injected_x86_64.c.dylib: injector/payloads/injected_x86_64.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -shared -arch x86_64 -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
+	$(CC) $(CFLAGS) -Wl,-sectalign,__TEXT,__text,4000 -fno-exceptions -shared -arch x86_64 -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
 
 build/injector/payloads/injected_arm64e.c.dylib: injector/payloads/injected_arm64e.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -shared -arch arm64e -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
+	$(CC) $(CFLAGS) -Wl,-sectalign,__TEXT,__text,4000 -fno-exceptions -shared -arch arm64e -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
 
 build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	gobjcopy -Obinary $^ $@
