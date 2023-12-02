@@ -149,7 +149,7 @@ void __attribute__((naked)) entry(void)
             "ldp  x4,  x5, [sp], #16\n"
             "ldp  x2,  x3, [sp], #16\n"
             "ldp  x0,  x1, [sp], #16\n"
-            "br  x18\n"
+            "br  x29\n"
             );
 }
 
