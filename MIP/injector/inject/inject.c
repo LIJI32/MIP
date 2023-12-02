@@ -107,8 +107,8 @@ kern_return_t inject_call_to_thread_arm(mach_port_t task, mach_port_t thread, ui
     ret = thread_get_state(thread, ARM_THREAD_STATE64, (thread_state_t) &state, &size);
     if (ret) goto exit;
     
-    /* Save PC to X18 (Normally reserved) */
-    state.__x[18] = (uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF;
+    /* Save PC to X29 (Frame pointer) */
+    state.__x[29] = (uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF;
     
     /* Update PC */
     thread_convert_thread_state(thread, THREAD_CONVERT_THREAD_STATE_TO_SELF, ARM_THREAD_STATE64, (thread_state_t)&state, size, (thread_state_t)&state, &size);
@@ -205,6 +205,7 @@ kern_return_t inject_stub_to_task(mach_port_t task, mach_vm_address_t *addr, mac
     kern_return_t ret = task_info(task, TASK_DYLD_INFO, (task_info_t) &info, &count);
     if (ret) return ret;
     *is_32_bit = info.all_image_info_format == TASK_DYLD_ALL_IMAGE_INFO_32;
+    fprintf(stderr, "Debug: info.all_image_info_addr = %p\n", (void *)info.all_image_info_addr);
     
     uint8_t *code = NULL;
     size_t code_size = 0;
