@@ -108,7 +108,7 @@ kern_return_t inject_call_to_thread_arm(mach_port_t task, mach_port_t thread, ui
     if (ret) goto exit;
     
     /* Save PC to FP */
-    arm_thread_state64_set_fp(state, (uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF);
+    state.__opaque_fp = (void *)((uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF);
     
     /* Update PC */
     thread_convert_thread_state(thread, THREAD_CONVERT_THREAD_STATE_TO_SELF, ARM_THREAD_STATE64, (thread_state_t)&state, size, (thread_state_t)&state, &size);
