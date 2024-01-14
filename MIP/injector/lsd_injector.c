@@ -14,12 +14,6 @@
 extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *);
 extern void xpc_dictionary_get_audit_token(xpc_object_t xdict, audit_token_t *token);
 
-uint64_t handleClientMessageHook_Sierra(void *this, uint64_t command, xpc_object_t dict);
-static typeof(handleClientMessageHook_Sierra) *handleClientMessageOrig_Sierra;
-
-uint64_t handleClientMessageHook_HighSierra(void *this, void *session, xpc_connection_t connection, xpc_object_t dict);
-static typeof(handleClientMessageHook_HighSierra) *handleClientMessageOrig_HighSierra;
-
 /* We want the user data to be accessible from all processes, but some processes (for
    example, Chrome's sub-processes) have a very strict sandbox profile so putting the
    data in the user's home folder won't always work. /usr/lib, on the other hand, is

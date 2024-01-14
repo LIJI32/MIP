@@ -172,6 +172,9 @@ kern_return_t get_thread_port_for_task(mach_port_t task, mach_port_t *thread)
     /* The first thread returned is the first thread created in the task, which is the main thread.
        This was verified in the kernel sources. */
     *thread = thread_list[0];
+    for (unsigned i = 1; i < thread_list_count; i++) {
+        mach_port_destroy(mach_task_self(), thread_list[i]);
+    }
     vm_deallocate(mach_task_self(), (vm_address_t) thread_list, thread_list_count * sizeof(thread_list[0]));
     return KERN_SUCCESS;
 }
@@ -277,18 +280,24 @@ kern_return_t inject_to_task(mach_port_t task, const char *argument)
     bool arm = is_arm(task);
     
     if ((ret = inject_stub_to_task(task, &code_addr, &ret_addr, argument, arm, &is_32_bit))) {
+        mach_port_destroy(mach_task_self(), thread);
         return ret;
     }
     
 #ifndef __x86_64__
+    kern_return_t ret;
     if (arm) {
-        return inject_call_to_thread_arm(task, thread, code_addr, ret_addr);
+        ret = inject_call_to_thread_arm(task, thread, code_addr, ret_addr);
     }
 #else
     if (is_32_bit) {
-        return inject_call_to_thread_i386(task, thread, (uint32_t)code_addr, (uint32_t)ret_addr);
+        ret = inject_call_to_thread_i386(task, thread, (uint32_t)code_addr, (uint32_t)ret_addr);
     }
 #endif
+    else {
+        ret = inject_call_to_thread_x86_64(task, thread, code_addr, ret_addr);
+    }
     
-    return inject_call_to_thread_x86_64(task, thread, code_addr, ret_addr);
+    mach_port_destroy(mach_task_self(), thread);
+    return ret;
 }
