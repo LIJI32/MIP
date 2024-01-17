@@ -18,8 +18,9 @@ MIP has the following advantages when comparing to other injection techniques:
  * Does not modify any system file on disk and can be easily uninstalled without rebooting
  * Does not use `DYLD_INSERT_LIBRARIES`, which may break the system if a file is deleted.
  * Works with both 32- and 64-bit applications, and allows injection to Garbage Collected processes (On El Capitan and older, GC was removed in Sierra)
- * Supports every macOS major up to and including Monterey
+ * Supports every macOS major up to and including Sonoma
  * Supports ARM64-based Macs
+ * Supports injection to translated Rosetta 2 processes
 
 ## How To Compile
 You will need Xcode's command-line tools, as well as binutils for `gobjcopy` (`brew install binutils`), which should be linked as `gobjcopy`. You will also need a signing identity, which may be self-signed. Not signing MIP binaries properly will make your system unstable! On Intel Macs, you will need the [10.13 SDK](https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX10.13.sdk.tar.xz), to compile the 32-bit portions of MIP.
@@ -78,7 +79,3 @@ The payload function is a compiled but unlinked C code, so it can't used any ext
 ## Upgrading Notes
 
 If you were using an old version on MIP that used `/usr/lib/mip` as its data directory on macOS Mojave or older, upon upgrading to macOS Catalina or newer MIP bundles that linked against `/usr/lib/mip/loader.dylib` will cease functioning. They must be recompiled and linked against `/Library/Apple/System/Library/Frameworks/mip/loader.dylib` instead.
-
-## Rosetta Support
-
-MIP is currently unable to inject to Intel processes running through Rosetta. This will be addressed in a future version.

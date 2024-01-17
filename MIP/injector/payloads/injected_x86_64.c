@@ -85,12 +85,65 @@ static const void *get_symbol_from_header(const struct mach_header_64 *header, c
     return NULL;
 }
 
+#ifdef ROSETTA
+void __attribute__((naked)) late_inject(void)
+{
+    __asm__ ("push %rsp\n"
+             "call _c_late_inject\n"
+             "ret");
+}
+
+/* In Rosetta, __TEXT segments are RWX, so we can put our data in __TEXT,
+   and to properly generate payloads, everything must be in one segment. */
+static __attribute__((section("__TEXT,__data"))) uintptr_t *stack_ret = NULL;
+static __attribute__((section("__TEXT,__data"))) uintptr_t ret_address = 0;
+
+void __attribute__((preserve_all)) c_late_inject(void)
+{
+    *stack_ret = ret_address;
+    typeof(dlopen) *$dlopen = NULL;
+    $dlopen = get_symbol_from_header(get_header_by_path("/usr/lib/system/libdyld.dylib"), "_dlopen");
+    
+    if ($dlopen) {
+        $dlopen(argument, RTLD_NOW);
+    }
+}
+#endif
+
 void __attribute__((preserve_all)) entry(void)
 {
     uint64_t flags = get_flags();
     
-    typeof(dlopen) *$dlopen = NULL;
+#ifdef ROSETTA
+    /*
+      For some reason, calling `dlopen` from the usual `lsdinjector` context,
+      specifically while using the Rosetta runtime, some Mach port connection
+      gets screwed up, which ends up crashing the next time it is used. If we
+      detect this scenario,  we inject the dlopen call to  after we return to
+      _LSApplicationCheckIn, which is safe.
+    */
+    uintptr_t _LSApplicationCheckIn = (uintptr_t) get_symbol_from_header(
+        get_header_by_path("/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices"),
+        "__LSApplicationCheckIn");
+        
+    if (_LSApplicationCheckIn) {
+        uintptr_t *stack = __builtin_frame_address(4);
+        for (unsigned i = 0; i < 128; i++) {
+            /* TODO: This will work for lsdinjector, but this can probably be improved.
+               It might have false positives (and even crashes) on some manual `inject`
+               scenarios. */
+            if (stack[i] > _LSApplicationCheckIn && stack[i] < _LSApplicationCheckIn + 4096) {
+                ret_address = stack[i];
+                stack_ret = &stack[i];
+                stack[i] = (uintptr_t)&late_inject;
+                return;
+            }
+        }
+    }
+#endif
     
+    typeof(dlopen) *$dlopen = NULL;
+
     /* We can't call dyld`dlopen when dyld3 is being used, so we must find libdyld`dlopen and call that instead */
     $dlopen = get_symbol_from_header(get_header_by_path("/usr/lib/system/libdyld.dylib"), "_dlopen");
     

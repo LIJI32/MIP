@@ -22,6 +22,7 @@ endif
 ifeq ($(shell uname -m),arm64)
 ARCH1 := arm64e
 ARCH2 := x86_64
+CFLAGS += -DROSETTA
 else
 ARCH1 := x86_64
 ARCH2 := i386
@@ -77,7 +78,7 @@ build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	
 
 install: all
-	if [ -d /usr/lib/mip ]; then \
+	if [ -d /usr/lib/mip -a ! -d /Library/Apple/System/Library/Frameworks/mip ]; then \
 		sudo rm /Users/*/Library/MIP ;\
 		sudo mkdir -p /Library/Apple/System/Library/Frameworks/ ;\
 		sudo mv /usr/lib/mip /Library/Apple/System/Library/Frameworks/ ;\
