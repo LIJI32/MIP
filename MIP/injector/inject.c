@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <stdbool.h>
-#include "inject/inject.h"
+#include "injectd_client/injectd_client.h"
 
 int main(int argc, const char **argv)
 {
@@ -69,31 +69,12 @@ int main(int argc, const char **argv)
     }
     
     fprintf(stderr, "Injecting to process %d\n", pid);
-    
-    kern_return_t ret = KERN_SUCCESS;
-    
-    if ((ret = task_for_pid(mach_task_self(), pid, &task))) {
-        fprintf(stderr, "Failed to get task for pid %d (error %x). Make sure %s is signed correctly or run it as root.\n", pid, ret, argv[0]);
-        exit(ret);
+        
+    const char *error = inject_to_pid(pid, argv[2], true);
+    if (error) {
+        fprintf(stderr, "Injection failed: %s\n", error);
+        exit(1);
     }
-    
-    ret = inject_to_task(task, argv[2]);
-    if (ret) {
-        fprintf(stderr, "Injection failed with error %x.\n", ret);
-        exit(ret);
-    }
-    
-    /* This interrupts blocking system calls to ensure execution. */
-    mach_port_t thread;
-    
-    ret = get_thread_port_for_task(task, &thread);
-    if (!ret) {
-        ret = thread_abort(thread);
-    }
-    if (ret) {
-        fprintf(stderr, "Injection succeeded, but the injected library will only run after the main thread wakes up\n");
-        exit(errno);
-    }
-    
+        
     return 0;
 }

@@ -36,28 +36,37 @@ endif
 SIGN_IDENTITY ?= CodeSign
 CODESIGN_TARGET := codesign -s "$(SIGN_IDENTITY)"
 
-all: build/lsdinjector.dylib build/loader.dylib build/inject local.lsdinjector.plist
+all: build/lsdinjector.dylib build/loader.dylib build/inject build/injectd local.lsdinjector.plist
 
-build/lsdinjector.dylib: build/injector/lsd_injector.c.o \
-								  build/injector/injector.o
-	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -lbsm -shared -o $@
+build/lsdinjector.dylib: build/injector/lsd_injector.c.o build/injector/injectd_client/injectd_client.m.o
+	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -lbsm -framework Foundation -shared -o $@
 	$(CODESIGN_TARGET) $@
 
 build/loader.dylib: $(LOADER_SOURCES)
 	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) $(if $(DUAL_ARCH), -arch $(ARCH2)) $^ -o $@
 	$(CODESIGN_TARGET) $@
 
-build/inject: build/injector/injector.o build/injector/main.c.o | injector/inject.entitlements
+build/injectd: build/injector/injector.o build/injector/injectd.m.o | injector/injectd.entitlements
 	mkdir -p $(dir $@)
-	$(CC) $(LDFLAGS) $^ -o $@ -arch $(ARCH1)
-	$(CODESIGN_TARGET) --entitlements injector/inject.entitlements $@
+	$(CC) $(LDFLAGS) -framework Foundation $^ -o $@ -arch $(ARCH1)
+	$(CODESIGN_TARGET) --entitlements injector/injectd.entitlements $@
+	
+build/inject: build/injector/inject.c.o build/injector/injectd_client/injectd_client.m.o
+	mkdir -p $(dir $@)
+	$(CC) $(LDFLAGS) -framework Foundation $^ -o $@ -arch $(ARCH1)
+	$(CODESIGN_TARGET) $@
 
 build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin
 	ld -r $(filter %.o,$^) -o $@ -sectcreate __INJ_$(ARCH1) __inj_$(ARCH1) build/injector/payloads/injected_$(ARCH1).c.bin -sectcreate __INJ_$(ARCH2) __inj_$(ARCH2) build/injector/payloads/injected_$(ARCH2).c.bin
 	
-build/%.o: %
+build/%.c.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -arch $(ARCH1) -c $^ -o $@
+	
+build/%.m.o: %.m
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -fobjc-arc -arch $(ARCH1) -c $^ -o $@
+
 	
 build/injector/payloads/injected_i386.c.dylib: injector/payloads/injected_i386.c
 	mkdir -p $(dir $@)
@@ -93,12 +102,13 @@ install: all
 	sudo mkdir -p /Library/Apple/System/Library/Frameworks/mip/Bundles
 	sudo mkdir -p /usr/local/include/mip
 	@# We remove the old libraries before copying, overwriting causes codesigning issues.
-	-@sudo rm -f /Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib /Library/Apple/System/Library/Frameworks/mip/loader.dylib
-	sudo cp build/lsdinjector.dylib build/loader.dylib /Library/Apple/System/Library/Frameworks/mip/
+	-@sudo rm -f /Library/Apple/System/Library/Frameworks/mip/{lsdinjector.dylib,loader.dylib,injectd}
+	sudo cp build/lsdinjector.dylib build/loader.dylib build/injectd /Library/Apple/System/Library/Frameworks/mip/
 	sudo cp build/inject /usr/local/bin/
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
-	sudo cp local.lsdinjector.plist /Library/LaunchDaemons/
+	sudo cp local.lsdinjector.plist local.injectd.plist /Library/LaunchDaemons/
 	sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation -bool true
+	-sudo launchctl bootstrap system /Library/LaunchDaemons/local.injectd.plist
 	if nvram boot-args | grep -v tss_should_crash=0; then \
 		sudo nvram boot-args="`nvram boot-args | cut -c 11-` tss_should_crash=0"; \
 		if nvram boot-args | grep -v tss_should_crash=0; then\

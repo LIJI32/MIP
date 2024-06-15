@@ -6,9 +6,9 @@
 #include <sys/syslimits.h>
 
 #include <loader/loader.h>
-#import <mach-o/loader.h>
-#import <mach-o/dyld.h>
-#include "inject/inject.h"
+#include <mach-o/loader.h>
+#include <mach-o/dyld.h>
+#include "injectd_client/injectd_client.h"
 
 // Private APIs
 extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *);
@@ -55,22 +55,7 @@ static void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
         /* While strictly speaking this should be loader's responsibility to create this folder,
            this function must run as root, so it is done by the injector. */
         create_user_data_folder(pid);
-        
-        /* Before 10.12, the xpc dict also included a apptaskport key with task port send rights.
-           In 10.11 this could be considered a vulnerability - if you managed to receive this
-           xpc message, by setting up a fake launchservicesd daemon or managing to inject code to
-           the real one, you could completely bypass the need for task_for_pid and get a task port
-           for rootless/SIP-protected processes, something that wouldn't be possible under SIP
-           even as root. Not sure if this possible vulnerability is the reason Apple removed this
-           key, it could be just some code cleanup.
-         */
-        mach_port_t task = xpc_dictionary_copy_mach_send(dict, "apptaskport");
-        
-        if (!task) {
-            task_for_pid(mach_task_self(), pid, &task);
-        }
-        inject_to_task(task, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib");
-        mach_port_destroy(mach_task_self(), task);
+        inject_to_pid(pid, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib", false);
     }
 }
 
