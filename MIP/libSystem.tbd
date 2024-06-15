@@ -1,0 +1,8 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ i386-macos ]
+install-name:    '/usr/lib/libSystem.B.dylib'
+exports:
+  - targets:         [ i386-macos ]
+    symbols:         [  ]
+...
