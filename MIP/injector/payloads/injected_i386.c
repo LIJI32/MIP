@@ -7,9 +7,9 @@
 
 /* These values are overwritten on a per-injection basis by the injector. */
 /* Must not be defined as consts, or the compiler will optimize them. */
-struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_32;
+__attribute__((section("__TEXT,__const"))) struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_32;
 
-char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
+__attribute__((section("__TEXT,__const"))) char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
 
 /* The interrupt calling convention does not save the flags register, so we use
    these ASM functions to save and restore it outselves. They must be called as
@@ -115,14 +115,10 @@ void __attribute__((interrupt)) entry(void * __attribute__((unused)) unused)
 
 /* Taken from Apple's libc */
 
-int 
-strcmp(s1, s2)
-const char *s1, *s2;
+int strcmp(const char *s1, const char *s2)
 {
     while (*s1 == *s2++)
         if (*s1++ == 0)
             return (0);
     return (*(const unsigned char *)s1 - *(const unsigned char *)(s2 - 1));
 }
-
-

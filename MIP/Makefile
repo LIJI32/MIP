@@ -2,8 +2,11 @@
 .PHONY: all install uninstall
 
 LDFLAGS := -g -mmacosx-version-min=10.10 -lc -F/System/Library/PrivateFrameworks
-CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations
+CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations -Wno-interrupt-service-routine
 SYSROOT ?= $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
+ifeq ($(SYSROOT),)
+SYSROOT := $(shell find /Library/Developer/CommandLineTools/SDKs -maxdepth 1 -name "MacOSX1*.sdk" | sort -V | tail -n 1)
+endif
 CFLAGS += -isysroot $(SYSROOT)
 SUBSTITUTE ?= YES
 
@@ -22,57 +25,66 @@ endif
 ifeq ($(shell uname -m),arm64)
 ARCH1 := arm64e
 ARCH2 := x86_64
+DUAL_ARCH ?= 1
+CFLAGS += -DROSETTA
 else
 ARCH1 := x86_64
 ARCH2 := i386
 endif
 
+
 SIGN_IDENTITY ?= CodeSign
 CODESIGN_TARGET := codesign -s "$(SIGN_IDENTITY)"
 
-all: build/lsdinjector.dylib build/loader.dylib build/inject local.lsdinjector.plist
+all: build/lsdinjector.dylib build/loader.dylib build/inject build/injectd local.lsdinjector.plist
 
-build/lsdinjector.dylib: build/injector/lsd_injector.c.o \
-								  build/injector/hook/hook.c.o \
-								  build/injector/hook/symbols.c.o \
-								  build/injector/hook/thread_locking.c.o \
-								  build/injector/injector.o
-	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -framework CoreSymbolication -lbsm -shared -o $@
+build/lsdinjector.dylib: build/injector/lsd_injector.c.o build/injector/injectd_client/injectd_client.m.o
+	$(CC) $(LDFLAGS) -arch $(ARCH1) $^ -lbsm -framework Foundation -shared -o $@
 	$(CODESIGN_TARGET) $@
 
 build/loader.dylib: $(LOADER_SOURCES)
-	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) -arch $(ARCH2) $^ -o $@
+	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) $(if $(DUAL_ARCH), -arch $(ARCH2)) $^ -o $@
 	$(CODESIGN_TARGET) $@
 
-build/inject: build/injector/injector.o build/injector/main.c.o
+build/injectd: build/injector/injector.o build/injector/injectd.m.o | injector/injectd.entitlements
 	mkdir -p $(dir $@)
-	$(CC) $(LDFLAGS) $^ -o $@ -arch $(ARCH1)
+	$(CC) $(LDFLAGS) -framework Foundation $^ -o $@ -arch $(ARCH1)
+	$(CODESIGN_TARGET) --entitlements injector/injectd.entitlements $@
+	
+build/inject: build/injector/inject.c.o build/injector/injectd_client/injectd_client.m.o
+	mkdir -p $(dir $@)
+	$(CC) $(LDFLAGS) -framework Foundation $^ -o $@ -arch $(ARCH1)
 	$(CODESIGN_TARGET) $@
 
-build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin 
+build/injector/injector.o: build/injector/inject/inject.c.o build/injector/payloads/injected_$(ARCH1).c.bin build/injector/payloads/injected_$(ARCH2).c.bin
 	ld -r $(filter %.o,$^) -o $@ -sectcreate __INJ_$(ARCH1) __inj_$(ARCH1) build/injector/payloads/injected_$(ARCH1).c.bin -sectcreate __INJ_$(ARCH2) __inj_$(ARCH2) build/injector/payloads/injected_$(ARCH2).c.bin
 	
-build/%.o: %
+build/%.c.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -arch $(ARCH1) -c $^ -o $@
+	
+build/%.m.o: %.m
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -fobjc-arc -arch $(ARCH1) -c $^ -o $@
+
 	
 build/injector/payloads/injected_i386.c.dylib: injector/payloads/injected_i386.c
 	mkdir -p $(dir $@)
 		
 	@# Fix the unaligned movaps LLVM bug, and convert iret to ret.
-	$(CC) $(CFLAGS) -arch i386 -Oz $^ -S -o - \
+	$(CC) $(CFLAGS) -fno-exceptions -arch i386 -Oz $^ -S -o - \
 		| sed "s/^	iret/	ret/g" \
 		| sed "s/^	movaps	%xmm7, -32(%ebp)/	movaps	%xmm7, -40(%ebp)/g" \
 		| sed "s/^	movaps	-32(%ebp), %xmm7/	movaps	-40(%ebp), %xmm7/g" \
-		| clang -Wl,-order_file,injector/payloads/order -shared -isysroot $(SYSROOT) -xassembler - -arch i386 -o $@
+		| clang -L. -Wl,-sectalign,__TEXT,__text,4000 -Wl,-order_file,injector/payloads/order -shared -isysroot $(SYSROOT) -xassembler - -arch i386 -o $@
 	
 build/injector/payloads/injected_x86_64.c.dylib: injector/payloads/injected_x86_64.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -shared -arch x86_64 -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
+	$(CC) $(CFLAGS) -Wl,-sectalign,__TEXT,__text,4000 -fno-exceptions -shared -arch x86_64 -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
 
 build/injector/payloads/injected_arm64e.c.dylib: injector/payloads/injected_arm64e.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -shared -arch arm64e -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
+	$(CC) $(CFLAGS) -Wl,-sectalign,__TEXT,__text,4000 -fno-exceptions -shared -arch arm64e -Oz -Wl,-order_file,injector/payloads/order $^ -o $@
 
 build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	gobjcopy -Obinary $^ $@
@@ -80,7 +92,7 @@ build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	
 
 install: all
-	if [ -d /usr/lib/mip ]; then \
+	if [ -d /usr/lib/mip -a ! -d /Library/Apple/System/Library/Frameworks/mip ]; then \
 		sudo rm /Users/*/Library/MIP ;\
 		sudo mkdir -p /Library/Apple/System/Library/Frameworks/ ;\
 		sudo mv /usr/lib/mip /Library/Apple/System/Library/Frameworks/ ;\
@@ -90,12 +102,29 @@ install: all
 	sudo mkdir -p /Library/Apple/System/Library/Frameworks/mip/Bundles
 	sudo mkdir -p /usr/local/include/mip
 	@# We remove the old libraries before copying, overwriting causes codesigning issues.
-	-@sudo rm -f /Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib /Library/Apple/System/Library/Frameworks/mip/loader.dylib
-	sudo cp build/lsdinjector.dylib build/loader.dylib /Library/Apple/System/Library/Frameworks/mip/
+	-@sudo rm -f /Library/Apple/System/Library/Frameworks/mip/{lsdinjector.dylib,loader.dylib,injectd}
+	sudo cp build/lsdinjector.dylib build/loader.dylib build/injectd /Library/Apple/System/Library/Frameworks/mip/
 	sudo cp build/inject /usr/local/bin/
 	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
-	sudo cp local.lsdinjector.plist /Library/LaunchDaemons/
+	sudo cp local.lsdinjector.plist local.injectd.plist /Library/LaunchDaemons/
 	sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation -bool true
+	-sudo launchctl bootstrap system /Library/LaunchDaemons/local.injectd.plist
+	if nvram boot-args | grep -v tss_should_crash=0; then \
+		sudo nvram boot-args="`nvram boot-args | cut -c 11-` tss_should_crash=0"; \
+		if nvram boot-args | grep -v tss_should_crash=0; then\
+			echo "Failed to add tss_should_crash=0. If you're running macOS Ventura or newer in a VM, you will need to update this bootarg manually."; \
+		else \
+			echo "Added tss_should_crash=0 boot argument. If you're running macOS Ventura or newer, a reboot is required"; \
+		fi \
+	fi
+	if nvram boot-args | grep -v amfi_get_out_of_my_way=1; then \
+		sudo nvram boot-args="`nvram boot-args | cut -c 11-` amfi_get_out_of_my_way=1"; \
+		if nvram boot-args | grep -v amfi_get_out_of_my_way=1; then\
+			echo "Failed to add amfi_get_out_of_my_way=1. If you're running macOS Sonoma or newer in a VM, you will need to update this bootarg manually."; \
+		else \
+			echo "Added amfi_get_out_of_my_way=1 boot argument. If you're running macOS Sonoma or newer, a reboot is required"; \
+		fi \
+	fi
 	(read -p "Inject MIP to launchservicesd without a restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd /Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib; fi;)
 
 uninstall:

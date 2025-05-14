@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11762" systemVersion="16D32" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" customObjectInstantitationMethod="direct">
     <dependencies>
-        <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11762"/>
+        <deployment version="101000" identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -98,27 +98,18 @@
         </menu>
         <window title="Alt Zoom Settings" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
-            <rect key="contentRect" x="0.0" y="1207" width="288" height="210"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1417"/>
+            <rect key="contentRect" x="0.0" y="1207" width="288" height="206"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1415"/>
             <view key="contentView" wantsLayer="YES" id="EiT-Mj-1SZ">
-                <rect key="frame" x="0.0" y="0.0" width="288" height="210"/>
+                <rect key="frame" x="0.0" y="0.0" width="288" height="206"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="VjF-Lq-AMW">
-                        <rect key="frame" x="18" y="179" width="142" height="17"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Zoom button behavior:" id="BbA-e9-XHy">
-                            <font key="font" metaFont="system"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                        </textFieldCell>
-                    </textField>
-                    <popUpButton verticalHuggingPriority="750" id="RP6-I4-dd5">
-                        <rect key="frame" x="127" y="144" width="144" height="26"/>
+                    <popUpButton verticalHuggingPriority="750" fixedFrame="YES" id="RP6-I4-dd5">
+                        <rect key="frame" x="127" y="136" width="144" height="26"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <popUpButtonCell key="cell" type="push" title="Full Screen" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="2" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="kgp-jE-Lad" id="Tpu-IP-5x9">
                             <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="menu"/>
+                            <font key="font" metaFont="system"/>
                             <menu key="menu" autoenablesItems="NO" id="u11-7p-7to">
                                 <items>
                                     <menuItem title="Same as Default" enabled="NO" id="pFb-Qs-4Wn"/>
@@ -132,12 +123,12 @@
                             <action selector="settingChanged:" target="Voe-Tx-rLC" id="gMb-MV-yi4"/>
                         </connections>
                     </popUpButton>
-                    <popUpButton verticalHuggingPriority="750" tag="1" id="Hhh-F7-kZW">
-                        <rect key="frame" x="127" y="111" width="144" height="26"/>
+                    <popUpButton verticalHuggingPriority="750" fixedFrame="YES" tag="1" id="Hhh-F7-kZW">
+                        <rect key="frame" x="127" y="105" width="144" height="26"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <popUpButtonCell key="cell" type="push" title="Same as Default" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="hO0-MR-mt8" id="NvU-np-Cdy">
                             <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="menu"/>
+                            <font key="font" metaFont="system"/>
                             <menu key="menu" autoenablesItems="NO" id="kYX-kd-dp9">
                                 <items>
                                     <menuItem title="Same as Default" state="on" id="hO0-MR-mt8"/>
@@ -151,12 +142,12 @@
                             <action selector="settingChanged:" target="Voe-Tx-rLC" id="ZWD-Vg-Hhe"/>
                         </connections>
                     </popUpButton>
-                    <popUpButton verticalHuggingPriority="750" tag="3" id="dcp-XX-Xcg">
-                        <rect key="frame" x="127" y="49" width="144" height="26"/>
+                    <popUpButton verticalHuggingPriority="750" fixedFrame="YES" tag="3" id="dcp-XX-Xcg">
+                        <rect key="frame" x="127" y="43" width="144" height="26"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <popUpButtonCell key="cell" type="push" title="Same as Default" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="8hU-UF-9ZG" id="S3J-JJ-K1D">
                             <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="menu"/>
+                            <font key="font" metaFont="system"/>
                             <menu key="menu" autoenablesItems="NO" id="Dap-Dp-H9C">
                                 <items>
                                     <menuItem title="Same as Default" state="on" id="8hU-UF-9ZG"/>
@@ -170,12 +161,12 @@
                             <action selector="settingChanged:" target="Voe-Tx-rLC" id="GFH-xh-kSd"/>
                         </connections>
                     </popUpButton>
-                    <popUpButton verticalHuggingPriority="750" tag="4" id="hGY-Rf-6zZ">
-                        <rect key="frame" x="127" y="18" width="144" height="26"/>
+                    <popUpButton verticalHuggingPriority="750" fixedFrame="YES" tag="4" id="hGY-Rf-6zZ">
+                        <rect key="frame" x="127" y="12" width="144" height="26"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <popUpButtonCell key="cell" type="push" title="Same as Default" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="har-vV-Vls" id="6Xo-JP-g8s">
                             <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="menu"/>
+                            <font key="font" metaFont="system"/>
                             <menu key="menu" autoenablesItems="NO" id="51G-ua-edu">
                                 <items>
                                     <menuItem title="Same as Default" state="on" id="har-vV-Vls"/>
@@ -189,12 +180,12 @@
                             <action selector="settingChanged:" target="Voe-Tx-rLC" id="gtN-Eh-VLS"/>
                         </connections>
                     </popUpButton>
-                    <popUpButton verticalHuggingPriority="750" tag="2" id="uUb-f9-eTv">
-                        <rect key="frame" x="127" y="80" width="144" height="26"/>
+                    <popUpButton verticalHuggingPriority="750" fixedFrame="YES" tag="2" id="uUb-f9-eTv">
+                        <rect key="frame" x="127" y="74" width="144" height="26"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <popUpButtonCell key="cell" type="push" title="Zoom" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="1" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="CJ0-7c-y9y" id="Exo-Wh-Wff">
                             <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="menu"/>
+                            <font key="font" metaFont="system"/>
                             <menu key="menu" autoenablesItems="NO" id="OZr-PG-Um2">
                                 <items>
                                     <menuItem title="Same as Default" id="si0-QT-Pkc"/>
@@ -208,8 +199,8 @@
                             <action selector="settingChanged:" target="Voe-Tx-rLC" id="sUW-UV-Smn"/>
                         </connections>
                     </popUpButton>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="vzr-Gs-Fi4">
-                        <rect key="frame" x="18" y="149" width="103" height="17"/>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="vzr-Gs-Fi4">
+                        <rect key="frame" x="18" y="142" width="103" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Default:" id="9YR-1n-65I">
                             <font key="font" metaFont="system"/>
@@ -217,8 +208,8 @@
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="khS-Wt-4rJ">
-                        <rect key="frame" x="18" y="118" width="103" height="17"/>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="khS-Wt-4rJ">
+                        <rect key="frame" x="18" y="111" width="103" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Shift:" id="kBV-mF-ICS">
                             <font key="font" metaFont="system"/>
@@ -226,8 +217,8 @@
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="5ON-Dw-VF3">
-                        <rect key="frame" x="18" y="85" width="103" height="17"/>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="5ON-Dw-VF3">
+                        <rect key="frame" x="18" y="80" width="103" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Option / Alt:" id="LcK-L4-O4p">
                             <font key="font" metaFont="system"/>
@@ -235,8 +226,8 @@
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="QXA-hf-Ujw">
-                        <rect key="frame" x="18" y="23" width="103" height="17"/>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="QXA-hf-Ujw">
+                        <rect key="frame" x="18" y="18" width="103" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Control:" id="PnT-Nk-Nhg">
                             <font key="font" metaFont="system"/>
@@ -244,10 +235,19 @@
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" id="YTI-E7-oEv">
-                        <rect key="frame" x="18" y="54" width="103" height="17"/>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="YTI-E7-oEv">
+                        <rect key="frame" x="18" y="49" width="103" height="17"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" alignment="right" title="Command" id="bKW-zH-jyh">
+                            <font key="font" metaFont="system"/>
+                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                        </textFieldCell>
+                    </textField>
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" id="VjF-Lq-AMW">
+                        <rect key="frame" x="18" y="169" width="142" height="17"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Zoom button behavior:" id="BbA-e9-XHy">
                             <font key="font" metaFont="system"/>
                             <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                             <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>

@@ -7,9 +7,9 @@
 
 /* These values are overwritten on a per-injection basis by the injector */
 /* Must not be defined as consts, or the compiler will optimize them. */
-struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_64;
+__attribute__((section("__TEXT,__const"))) struct dyld_all_image_infos *dyld_info = (typeof(dyld_info)) DYLD_MAGIC_64;
 
-char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
+__attribute__((section("__TEXT,__const"))) char argument[ARGUMENT_MAX_LENGTH] = ARGUMENT_MAGIC_STR;
 
 static const struct mach_header_64 *get_header_by_path(const char *name)
 {
@@ -75,13 +75,14 @@ void c_entry(void)
 
     
     if ($dlopen) {
-        $dlopen(argument, RTLD_NOW);
+        $dlopen((const char *)argument, RTLD_NOW);
     }
 }
 
 void __attribute__((naked)) entry(void)
 {
     __asm__(
+            "and x29, x29, 0xFFFFFFFFFFF\n" // Strip PAC error bit set by thread_set_state
             "stp  x0,  x1, [sp,#-16]!\n"
             "stp  x2,  x3, [sp,#-16]!\n"
             "stp  x4,  x5, [sp,#-16]!\n"
@@ -97,43 +98,43 @@ void __attribute__((naked)) entry(void)
             "stp x24, x25, [sp,#-16]!\n"
             "stp x26, x27, [sp,#-16]!\n"
             "stp x28, x29, [sp,#-16]!\n"
-            "stp  q0,  q1, [sp,#-16]!\n"
-            "stp  q2,  q3, [sp,#-16]!\n"
-            "stp  q4,  q5, [sp,#-16]!\n"
-            "stp  q6,  q7, [sp,#-16]!\n"
-            "stp  q8,  q9, [sp,#-16]!\n"
-            "stp q10, q11, [sp,#-16]!\n"
-            "stp q12, q13, [sp,#-16]!\n"
-            "stp q14, q15, [sp,#-16]!\n"
-            "stp q16, q17, [sp,#-16]!\n"
-            "stp q18, q19, [sp,#-16]!\n"
-            "stp q20, q21, [sp,#-16]!\n"
-            "stp q22, q23, [sp,#-16]!\n"
-            "stp q24, q25, [sp,#-16]!\n"
-            "stp q26, q27, [sp,#-16]!\n"
-            "stp q28, q29, [sp,#-16]!\n"
-            "stp q30, q31, [sp,#-16]!\n"
+            "stp  q0,  q1, [sp,#-32]!\n"
+            "stp  q2,  q3, [sp,#-32]!\n"
+            "stp  q4,  q5, [sp,#-32]!\n"
+            "stp  q6,  q7, [sp,#-32]!\n"
+            "stp  q8,  q9, [sp,#-32]!\n"
+            "stp q10, q11, [sp,#-32]!\n"
+            "stp q12, q13, [sp,#-32]!\n"
+            "stp q14, q15, [sp,#-32]!\n"
+            "stp q16, q17, [sp,#-32]!\n"
+            "stp q18, q19, [sp,#-32]!\n"
+            "stp q20, q21, [sp,#-32]!\n"
+            "stp q22, q23, [sp,#-32]!\n"
+            "stp q24, q25, [sp,#-32]!\n"
+            "stp q26, q27, [sp,#-32]!\n"
+            "stp q28, q29, [sp,#-32]!\n"
+            "stp q30, q31, [sp,#-32]!\n"
             "mrs x0, nzcv\n"
             "stp x0, lr, [sp,#-16]!\n"
             "bl _c_entry\n"
             "ldp x0, lr, [sp], #16\n"
             "msr nzcv, x0\n"
-            "ldp q30, q31, [sp], #16\n"
-            "ldp q28, q29, [sp], #16\n"
-            "ldp q26, q27, [sp], #16\n"
-            "ldp q24, q25, [sp], #16\n"
-            "ldp q22, q23, [sp], #16\n"
-            "ldp q20, q21, [sp], #16\n"
-            "ldp q18, q19, [sp], #16\n"
-            "ldp q16, q17, [sp], #16\n"
-            "ldp q14, q15, [sp], #16\n"
-            "ldp q12, q13, [sp], #16\n"
-            "ldp q10, q11, [sp], #16\n"
-            "ldp  q8,  q9, [sp], #16\n"
-            "ldp  q6,  q7, [sp], #16\n"
-            "ldp  q4,  q5, [sp], #16\n"
-            "ldp  q2,  q3, [sp], #16\n"
-            "ldp  q0,  q1, [sp], #16\n"
+            "ldp q30, q31, [sp], #32\n"
+            "ldp q28, q29, [sp], #32\n"
+            "ldp q26, q27, [sp], #32\n"
+            "ldp q24, q25, [sp], #32\n"
+            "ldp q22, q23, [sp], #32\n"
+            "ldp q20, q21, [sp], #32\n"
+            "ldp q18, q19, [sp], #32\n"
+            "ldp q16, q17, [sp], #32\n"
+            "ldp q14, q15, [sp], #32\n"
+            "ldp q12, q13, [sp], #32\n"
+            "ldp q10, q11, [sp], #32\n"
+            "ldp  q8,  q9, [sp], #32\n"
+            "ldp  q6,  q7, [sp], #32\n"
+            "ldp  q4,  q5, [sp], #32\n"
+            "ldp  q2,  q3, [sp], #32\n"
+            "ldp  q0,  q1, [sp], #32\n"
             "ldp x28, x29, [sp], #16\n"
             "ldp x26, x27, [sp], #16\n"
             "ldp x24, x25, [sp], #16\n"
@@ -149,16 +150,14 @@ void __attribute__((naked)) entry(void)
             "ldp  x4,  x5, [sp], #16\n"
             "ldp  x2,  x3, [sp], #16\n"
             "ldp  x0,  x1, [sp], #16\n"
-            "br  x18\n"
+            "br  x29\n"
             );
 }
 
 
 /* Taken from Apple's libc */
 
-int 
-strcmp(s1, s2)
-const char *s1, *s2;
+int strcmp(const char *s1, const char *s2)
 {
     while (*s1 == *s2++)
         if (*s1++ == 0)
