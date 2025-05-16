@@ -207,12 +207,14 @@ kern_return_t inject_call_to_thread_arm(mach_port_t task, mach_port_t thread, ui
     ret = thread_get_state(thread, ARM_THREAD_STATE64, (thread_state_t) &state, &size);
     if (ret) goto exit;
     
+    thread_convert_thread_state(thread, THREAD_CONVERT_THREAD_STATE_TO_SELF, ARM_THREAD_STATE64, (thread_state_t)&state, size, (thread_state_t)&state, &size);
+
     /* Save PC to FP */
-    state.__opaque_fp = (void *)((uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF);
+    __darwin_arm_thread_state64_set_fp(state, (void *)((uint64_t)state.__opaque_pc & 0xFFFFFFFFFFF));
     
     /* Update PC */
-    thread_convert_thread_state(thread, THREAD_CONVERT_THREAD_STATE_TO_SELF, ARM_THREAD_STATE64, (thread_state_t)&state, size, (thread_state_t)&state, &size);
     __darwin_arm_thread_state64_set_pc_fptr(state, ptrauth_sign_unauthenticated((void *)function, ptrauth_key_function_pointer, 0));
+    
     thread_convert_thread_state(thread, THREAD_CONVERT_THREAD_STATE_FROM_SELF, ARM_THREAD_STATE64, (thread_state_t)&state, size, (thread_state_t)&state, &size);
     ret = thread_set_state(thread, ARM_THREAD_STATE64, (thread_state_t) &state, size);
     if (ret) goto exit;

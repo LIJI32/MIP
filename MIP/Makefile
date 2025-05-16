@@ -2,7 +2,7 @@
 .PHONY: all install uninstall
 
 LDFLAGS := -g -mmacosx-version-min=10.10 -lc -F/System/Library/PrivateFrameworks
-CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-deprecated-declarations -Wno-interrupt-service-routine
+CFLAGS := -g -mmacosx-version-min=10.10 -I. -Werror -O3 -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-interrupt-service-routine
 SYSROOT ?= $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
 ifeq ($(SYSROOT),)
 SYSROOT := $(shell find /Library/Developer/CommandLineTools/SDKs -maxdepth 1 -name "MacOSX1*.sdk" | sort -V | tail -n 1)

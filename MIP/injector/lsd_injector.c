@@ -69,6 +69,57 @@ static uint64_t xpc_dictionary_get_int64_hook(xpc_object_t dict, const char *key
 }
 
 #if __arm64__
+
+// Derived from code by khanhduytran0 {
+#define _COMM_PAGE_START_ADDRESS (0x0000000FFFFFC000ULL)
+#define _COMM_PAGE_TPRO_WRITE_ENABLE (_COMM_PAGE_START_ADDRESS + 0x0D0)
+#define _COMM_PAGE_TPRO_WRITE_DISABLE (_COMM_PAGE_START_ADDRESS + 0x0D8)
+
+static bool os_tpro_is_supported(void)
+{
+    if (*(uint64_t*)_COMM_PAGE_TPRO_WRITE_ENABLE) {
+        return true;
+    }
+    return false;
+}
+
+__attribute__((naked)) bool os_thread_self_tpro_is_writeable(void)
+{
+    __asm__ __volatile__ (
+                          "mrs             x0, s3_6_c15_c1_5\n"
+                          "ubfx            x0, x0, #0x24, #1;\n"
+                          "ret\n"
+                          );
+}
+
+void os_thread_self_restrict_tpro_to_rw(void)
+{
+    __asm__ __volatile__ (
+                          "mov x0, %0\n"
+                          "ldr x0, [x0]\n"
+                          "msr s3_6_c15_c1_5, x0\n"
+                          "isb sy\n"
+                          :: "r" (_COMM_PAGE_TPRO_WRITE_ENABLE)
+                          : "memory", "x0"
+                          );
+    return;
+}
+
+void os_thread_self_restrict_tpro_to_ro(void)
+{
+    __asm__ __volatile__ (
+                          "mov x0, %0\n"
+                          "ldr x0, [x0]\n"
+                          "msr s3_6_c15_c1_5, x0\n"
+                          "isb sy\n"
+                          :: "r" (_COMM_PAGE_TPRO_WRITE_DISABLE)
+                          : "memory", "x0"
+                          );
+    return;
+}
+
+// }
+
 static void unprotect_page(void *page)
 {
     if (mprotect(page, 0x4000, PROT_READ | PROT_WRITE) == 0) {
@@ -107,11 +158,24 @@ static void __attribute__((constructor)) hook_lsd(void)
     uintptr_t slide = (uintptr_t)header - first->vmaddr;
     void **address = (void **)(data->vmaddr + slide);
     void **end = (void **)(data->vmaddr + data->vmsize + slide);
+#if __arm64__
+    bool has_tpro = os_tpro_is_supported();
+#endif
     while (address < end) {
     #if __arm64__
-        if (((uintptr_t)*address & 0xFFFFFFFFFFF) == ((uintptr_t)(xpc_dictionary_get_int64) & 0xFFFFFFFFFFF)) {
-            unprotect_page((void *)(((uintptr_t)address) & ~0x3FFF));
-            *address = ptrauth_sign_unauthenticated((void *)((uintptr_t)&xpc_dictionary_get_int64_hook & 0xFFFFFFFFFFF), ptrauth_key_function_pointer, address);
+        if ((uintptr_t)__builtin_ptrauth_strip(*address, 0) == (uintptr_t)__builtin_ptrauth_strip(&xpc_dictionary_get_int64, 0)) {
+            bool revert_tpro_state = false;
+            if (!has_tpro) {
+                unprotect_page((void *)(((uintptr_t)address) & ~0x3FFF));
+            }
+            else if (!os_thread_self_tpro_is_writeable()) {
+                os_thread_self_restrict_tpro_to_rw();
+                revert_tpro_state = true;
+            }
+            *address = ptrauth_sign_unauthenticated((void *)((uintptr_t)__builtin_ptrauth_strip(&xpc_dictionary_get_int64_hook, 0)), ptrauth_key_function_pointer, address);
+            if (revert_tpro_state) {
+                os_thread_self_restrict_tpro_to_ro();
+            }
         }
     #else
         if (*address == xpc_dictionary_get_int64) {
