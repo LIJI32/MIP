@@ -31,11 +31,11 @@ typedef struct {
     uint64_t    __cs;
     uint64_t    __fs;
     uint64_t    __gs;
+    uint64_t    __rosetta_offset;
 } x86_thread_state64_t;
 #endif
 
 typedef struct {
-    uint64_t unknown[8];
     uint64_t rax;
     uint64_t rcx;
     uint64_t rdx;
@@ -70,17 +70,41 @@ kern_return_t thread_get_state_x86_64(mach_port_t task, mach_port_t thread, x86_
     /* Verify a "safe" injection state: the highest bit of X18 is set if we're
        outside of JIT code, then we know the registers stored in the Rosetta
        State buffer are up to date. Also, X28 *should* have the value of RIP
-       during most instructions, so make sure it points to `retq`. */
+       during most instructions, so make sure it points to `retq` or a common
+       libsystem_kernel return site. */
     if (!(arm_state.__x[18] & (1ULL << 63))) return -1;
-    uint8_t opcode = 0;
-    mach_vm_size_t read_size = sizeof(opcode);
-    ret = mach_vm_read_overwrite(task, arm_state.__x[28], read_size, (mach_vm_address_t) &opcode, &read_size);
+    uint8_t opcodes[11];
+    mach_vm_size_t read_size = sizeof(opcodes);
+    ret = mach_vm_read_overwrite(task, arm_state.__x[28], read_size, (mach_vm_address_t)&opcodes, &read_size);
     if (ret) return ret;
-    if (opcode != 0xc3) return -2;
+    if (opcodes[0] != 0xc3) {
+        /* Common return site pattern:
+               73 08                   jae    .ret
+               48 89 c7                mov    rdi,rax
+               e9 xx xx xx xx          jmp    cerror_nocancel
+           .ret
+               c3                      ret
+         */
+        static const uint8_t return_site[] ={
+            0x73, 0x08, 0x48, 0x89, 0xc7, 0xe9, 0, 0, 0, 0, 0xc3
+        };
+        opcodes[6] = opcodes[7] = opcodes[8] = opcodes[9] = 0;
+        if (memcmp(opcodes, return_site, sizeof(return_site)) != 0) {
+            return -2;
+        }
+    }
     
     rosetta_state_t rosetta_state;
     read_size = sizeof(rosetta_state);
-    ret = mach_vm_read_overwrite(task, (arm_state.__x[18] & ~(1ULL << 63)), read_size, (mach_vm_address_t) &rosetta_state, &read_size);
+    
+    if (__builtin_available(macOS 13.0, *)) {
+        state->__rosetta_offset = 16; // Only tested on macOS 15
+    }
+    else {
+        state->__rosetta_offset = 64; // Only tested on macOS 12, known to not work on 13 & 14
+    }
+    
+    ret = mach_vm_read_overwrite(task, (arm_state.__x[18] & ~(1ULL << 63)) + state->__rosetta_offset, read_size, (mach_vm_address_t) &rosetta_state, &read_size);
     
     if (ret) return ret;
     
@@ -121,7 +145,7 @@ kern_return_t thread_set_state_x86_64(mach_port_t task, mach_port_t thread, cons
     if (!(arm_state.__x[18] & (1ULL << 63))) return -1;
     rosetta_state_t rosetta_state;
     mach_vm_size_t read_size = sizeof(rosetta_state);
-    ret = mach_vm_read_overwrite(task, (arm_state.__x[18] & ~(1ULL << 63)), read_size, (mach_vm_address_t) &rosetta_state, &read_size);
+    ret = mach_vm_read_overwrite(task, (arm_state.__x[18] & ~(1ULL << 63)) + state->__rosetta_offset, read_size, (mach_vm_address_t) &rosetta_state, &read_size);
     
     if (ret) return ret;
     
@@ -142,7 +166,7 @@ kern_return_t thread_set_state_x86_64(mach_port_t task, mach_port_t thread, cons
     rosetta_state.r14 = state->__r14;
     rosetta_state.r15 = state->__r15;
     
-    return mach_vm_write(task, (arm_state.__x[18] & ~(1ULL << 63)), (vm_offset_t)&rosetta_state, sizeof(rosetta_state));
+    return mach_vm_write(task, (arm_state.__x[18] & ~(1ULL << 63)) + state->__rosetta_offset, (vm_offset_t)&rosetta_state, sizeof(rosetta_state));
 #endif
 }
 
