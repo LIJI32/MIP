@@ -4,8 +4,7 @@
 #include <stdint.h>
 #include <pwd.h>
 #include <sys/syslimits.h>
-
-#include <loader/loader.h>
+#include <dlfcn.h>
 #include <mach-o/loader.h>
 #include <mach-o/dyld.h>
 #include "injectd_client/injectd_client.h"
@@ -13,6 +12,37 @@
 // Private APIs
 extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *);
 extern void xpc_dictionary_get_audit_token(xpc_object_t xdict, audit_token_t *token);
+
+static const char *MIP_injector_path(void)
+{
+    Dl_info info;
+    dladdr("", &info); // Get own info
+    return info.dli_fname;
+}
+
+static const char *MIP_loader_path(void)
+{
+    static char *ret = NULL;
+    if (ret) return ret;
+    
+    ret = strdup(MIP_injector_path());
+    *strrchr(ret, '/') = 0;
+    
+    // strlen("loader.dylib") < strlen("lsdinjector.dylib")
+    strcat(ret, "/loader.dylib");
+    
+    return ret;
+}
+
+static const char *MIP_root_path(void)
+{
+    static char *ret = NULL;
+    if (ret) return ret;
+    
+    ret = strdup(MIP_injector_path());
+    *strrchr(ret, '/') = 0;
+    return ret;
+}
 
 /* We want the user data to be accessible from all processes, but some processes (for
    example, Chrome's sub-processes) have a very strict sandbox profile so putting the
@@ -25,8 +55,8 @@ static void create_user_data_folder(pid_t pid)
     struct proc_bsdinfo proc;
     proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &proc, sizeof(proc));
     
-    char path[USER_DATA_PATH_MAX];
-    sprintf(path, USER_DATA_ROOT "/%d", proc.pbi_uid);
+    char path[PATH_MAX];
+    sprintf(path, "%s/user_data/%d", MIP_root_path(), proc.pbi_uid);
     
     if (mkdir(path, 0755)) return; // Might already exist
     chown(path, proc.pbi_uid, proc.pbi_gid);
@@ -55,7 +85,7 @@ static void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
         /* While strictly speaking this should be loader's responsibility to create this folder,
            this function must run as root, so it is done by the injector. */
         create_user_data_folder(pid);
-        inject_to_pid(pid, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib", false);
+        inject_to_pid(pid, MIP_loader_path(), false);
     }
 }
 

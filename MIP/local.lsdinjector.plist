@@ -15,7 +15,7 @@
 	<array>
 		<string>/usr/local/bin/inject</string>
 		<string>launchservicesd</string>
-		<string>/Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib</string>
+		<string>@MIP_ROOT@/lsdinjector.dylib</string>
 		<string>-w</string>
 	</array>
 	<key>RunAtLoad</key>

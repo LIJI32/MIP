@@ -9,6 +9,7 @@ SYSROOT := $(shell find /Library/Developer/CommandLineTools/SDKs -maxdepth 1 -na
 endif
 CFLAGS += -isysroot $(SYSROOT)
 SUBSTITUTE ?= YES
+MIP_ROOT ?= /Library/Apple/System/Library/Frameworks/mip
 
 ifneq ($(SUBSTITUTE),YES)
 ifneq ($(SUBSTITUTE),NO)
@@ -43,7 +44,7 @@ build/lsdinjector.dylib: build/injector/lsd_injector.c.o build/injector/injectd_
 	$(CODESIGN_TARGET) $@
 
 build/loader.dylib: $(LOADER_SOURCES)
-	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name /Library/Apple/System/Library/Frameworks/mip/loader.dylib -framework Foundation -shared -arch $(ARCH1) $(if $(DUAL_ARCH), -arch $(ARCH2)) $^ -o $@
+	$(CC) $(CFLAGS) $(SUBSTITUTE_CFLAGS) $(LDFLAGS) -install_name @loader_path/../../../../loader.dylib -framework Foundation -shared -arch $(ARCH1) $(if $(DUAL_ARCH), -arch $(ARCH2)) $^ -o $@
 	$(CODESIGN_TARGET) $@
 
 build/injectd: build/injector/injector.o build/injector/injectd.m.o | injector/injectd.entitlements
@@ -92,21 +93,17 @@ build/injector/payloads/%.bin: build/injector/payloads/%.dylib
 	
 
 install: all
-	if [ -d /usr/lib/mip -a ! -d /Library/Apple/System/Library/Frameworks/mip ]; then \
-		sudo rm /Users/*/Library/MIP ;\
-		sudo mkdir -p /Library/Apple/System/Library/Frameworks/ ;\
-		sudo mv /usr/lib/mip /Library/Apple/System/Library/Frameworks/ ;\
-		sudo ln -s /Library/Apple/System/Library/Frameworks/mip /usr/lib/mip ;\
-	fi
-	sudo mkdir -p /Library/Apple/System/Library/Frameworks/mip/user_data
-	sudo mkdir -p /Library/Apple/System/Library/Frameworks/mip/Bundles
+	sudo mkdir -p $(MIP_ROOT)/user_data
+	sudo mkdir -p $(MIP_ROOT)/Bundles
 	sudo mkdir -p /usr/local/include/mip
 	@# We remove the old libraries before copying, overwriting causes codesigning issues.
-	-@sudo rm -f /Library/Apple/System/Library/Frameworks/mip/{lsdinjector.dylib,loader.dylib,injectd}
-	sudo cp build/lsdinjector.dylib build/loader.dylib build/injectd /Library/Apple/System/Library/Frameworks/mip/
+	-@sudo rm -f $(MIP_ROOT)/{lsdinjector.dylib,loader.dylib,injectd}
+	sudo cp build/lsdinjector.dylib build/loader.dylib build/injectd $(MIP_ROOT)
 	sudo cp build/inject /usr/local/bin/
-	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h
-	sudo cp local.lsdinjector.plist local.injectd.plist /Library/LaunchDaemons/
+	sudo cp loader/loader_public.h /usr/local/include/mip/loader.h	
+	sed "s=@MIP_ROOT@=$(MIP_ROOT)=g" local.injectd.plist | sudo dd of=/Library/LaunchDaemons/local.injectd.plist
+	sed "s=@MIP_ROOT@=$(MIP_ROOT)=g" local.lsdinjector.plist | sudo dd of=/Library/LaunchDaemons/local.lsdinjector.plist
+
 	sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation -bool true
 	-sudo launchctl bootstrap system /Library/LaunchDaemons/local.injectd.plist
 	if nvram boot-args | grep -v tss_should_crash=0; then \
@@ -125,10 +122,10 @@ install: all
 			echo "Added amfi_get_out_of_my_way=1 boot argument. If you're running macOS Sonoma or newer, a reboot is required"; \
 		fi \
 	fi
-	(read -p "Inject MIP to launchservicesd without a restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd /Library/Apple/System/Library/Frameworks/mip/lsdinjector.dylib; fi;)
+	(read -p "Inject MIP to launchservicesd without a restart? [y/N] " -n 1 -r; echo ; if [[ $$REPLY =~ ^[Yy]$$ ]]; then sudo inject launchservicesd $(MIP_ROOT)/lsdinjector.dylib; fi;)
 
 uninstall:
-	-sudo rm -rf /Library/Apple/System/Library/Frameworks/mip
+	-sudo rm -rf $(MIP_ROOT)
 	-sudo rm -rf /usr/include/mip
 	-sudo rm /Library/LaunchDaemons/local.lsdinjector.plist
 	-sudo defaults delete /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation
