@@ -6,18 +6,21 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include "injectd_client/injectd_client.h"
 
 int main(int argc, const char **argv)
 {
     bool wait_for_process = false;
-    if (argc == 4 && strcmp(argv[3], "-w") == 0) {
+    unsigned delay = 0;
+    if (argc == 4 && argv[3][0] == '-' && argv[3][1] == 'w') {
         argc = 3;
+        delay = atoi(argv[3] + 2);
         wait_for_process = true;
     }
     
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s pid/name dylib [-w]\n", argv[0]);
+        fprintf(stderr, "Usage: %s pid/name dylib [-w[delay]]\n", argv[0]);
         exit(-1);
     }
     
@@ -66,6 +69,10 @@ int main(int argc, const char **argv)
     if (pid == 0) {
         fprintf(stderr, "Failed to find process named %s.\n", argv[1]);
         exit(-1);
+    }
+    
+    if (delay) {
+        sleep(delay);
     }
     
     fprintf(stderr, "Injecting to process %d\n", pid);

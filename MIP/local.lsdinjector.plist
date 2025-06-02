@@ -16,7 +16,7 @@
 		<string>/usr/local/bin/inject</string>
 		<string>launchservicesd</string>
 		<string>@MIP_ROOT@/lsdinjector.dylib</string>
-		<string>-w</string>
+		<string>-w4</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
