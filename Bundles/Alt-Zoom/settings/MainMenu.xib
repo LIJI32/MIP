@@ -115,7 +115,7 @@
                                     <menuItem title="Same as Default" enabled="NO" id="pFb-Qs-4Wn"/>
                                     <menuItem title="Zoom" tag="1" id="oJA-Dv-B3Z"/>
                                     <menuItem title="Full Screen" state="on" tag="2" id="kgp-jE-Lad"/>
-                                    <menuItem title="Maximize" tag="3" id="hm8-hP-o5a"/>
+                                    <menuItem title="Fill" tag="3" id="hm8-hP-o5a"/>
                                 </items>
                             </menu>
                         </popUpButtonCell>
@@ -134,7 +134,7 @@
                                     <menuItem title="Same as Default" state="on" id="hO0-MR-mt8"/>
                                     <menuItem title="Zoom" tag="1" id="SiU-jx-zwT"/>
                                     <menuItem title="Full Screen" tag="2" id="tXb-ny-9fh"/>
-                                    <menuItem title="Maximize" tag="3" id="WxZ-ei-nxy"/>
+                                    <menuItem title="Fill" tag="3" id="WxZ-ei-nxy"/>
                                 </items>
                             </menu>
                         </popUpButtonCell>
@@ -153,7 +153,7 @@
                                     <menuItem title="Same as Default" state="on" id="8hU-UF-9ZG"/>
                                     <menuItem title="Zoom" tag="1" id="s1R-mI-xs8"/>
                                     <menuItem title="Full Screen" tag="2" id="Fm7-kG-7DQ"/>
-                                    <menuItem title="Maximize" tag="3" id="3ZY-JX-62n"/>
+                                    <menuItem title="Fill" tag="3" id="3ZY-JX-62n"/>
                                 </items>
                             </menu>
                         </popUpButtonCell>
@@ -172,7 +172,7 @@
                                     <menuItem title="Same as Default" state="on" id="har-vV-Vls"/>
                                     <menuItem title="Zoom" tag="1" id="EWG-iz-XDj"/>
                                     <menuItem title="Full Screen" tag="2" id="6wX-oY-1BE"/>
-                                    <menuItem title="Maximize" tag="3" id="Bs5-Gs-qlG"/>
+                                    <menuItem title="Fill" tag="3" id="Bs5-Gs-qlG"/>
                                 </items>
                             </menu>
                         </popUpButtonCell>
@@ -191,7 +191,7 @@
                                     <menuItem title="Same as Default" id="si0-QT-Pkc"/>
                                     <menuItem title="Zoom" state="on" tag="1" id="CJ0-7c-y9y"/>
                                     <menuItem title="Full Screen" tag="2" id="Scc-wH-B17"/>
-                                    <menuItem title="Maximize" tag="3" id="SpE-7D-hoE"/>
+                                    <menuItem title="Fill" tag="3" id="SpE-7D-hoE"/>
                                 </items>
                             </menu>
                         </popUpButtonCell>

@@ -75,8 +75,9 @@ static bool checking_for_fullscreen = false;
 @end
 
 @interface NSWindow ()
-- (void) _setNeedsZoom:(id) sender;
+- (void) _setNeedsZoom:(id)sender;
 - (struct CGRect)_standardFrame;
+- (void)_zoomFill:(id)sender;
 @end
 
 /* Hook NSWindow to set checking_for_fullscreen (This controls the actual action taken) */
@@ -86,6 +87,20 @@ static bool checking_for_fullscreen = false;
     checking_for_fullscreen = true;
     [self AZH__setNeedsZoom:sender];
     checking_for_fullscreen = false;
+}
+
+- (void)AZH__zoomFill:(id)sender
+{
+    if (sender != [self standardWindowButton:NSWindowZoomButton]) {
+        [self AZH__zoomFill:sender];
+        return;
+    }
+    checking_for_fullscreen = false;
+    if ([AZHSettings behaviorForModifiers:[NSEvent modifierFlags]] == AZH_MAXIMIZE) {
+        [self AZH__zoomFill:sender];
+        return;
+    }
+    [self zoom:sender];
 }
 
 - (struct CGRect)AZH__standardFrame
@@ -110,7 +125,9 @@ static bool checking_for_fullscreen = false;
                                    class_getInstanceMethod(self, @selector(AZH__setNeedsZoom:)));
     method_exchangeImplementations(class_getInstanceMethod(self, @selector(_standardFrame)),
                                    class_getInstanceMethod(self, @selector(AZH__standardFrame)));
-
-    
+    if ([self instancesRespondToSelector:@selector(_zoomFill:)]) {
+        method_exchangeImplementations(class_getInstanceMethod(self, @selector(_zoomFill:)),
+                                       class_getInstanceMethod(self, @selector(AZH__zoomFill:)));
+    }
 }
 @end
