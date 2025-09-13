@@ -16,21 +16,6 @@ __attribute__((section("__TEXT,__const"))) char argument[ARGUMENT_MAX_LENGTH] = 
    early and as late as possible, respectively, so instructions that modify flags
    won't destory the state. */
 
-uint64_t get_flags(void);
-void set_flags(uint64_t);
-
-__asm__ (
-         "_get_flags: \n"
-         "    pushfq \n"
-         "    pop %rax \n"
-         "    ret \n"
-         
-         "_set_flags: \n"
-         "    push %rdi \n"
-         "    popfq \n"
-         "    ret \n"
-         );
-
 static const struct mach_header_64 *get_header_by_path(const char *name)
 {
     for (unsigned i = 0; i < dyld_info->infoArrayCount; i++) {
@@ -89,7 +74,11 @@ static const void *get_symbol_from_header(const struct mach_header_64 *header, c
 void __attribute__((naked)) late_inject(void)
 {
     __asm__ ("push %rsp\n"
+             "push %r11\n"
+             "pushfq\n"
              "call _c_late_inject\n"
+             "popfq\n"
+             "pop %r11\n"
              "ret");
 }
 
@@ -110,10 +99,8 @@ void __attribute__((preserve_all)) c_late_inject(void)
 }
 #endif
 
-void __attribute__((preserve_all)) entry(void)
+void __attribute__((preserve_all)) c_entry(void)
 {
-    uint64_t flags = get_flags();
-    
 #ifdef ROSETTA
     /*
       For some reason, calling `dlopen` from the usual `lsdinjector` context,
@@ -132,7 +119,7 @@ void __attribute__((preserve_all)) entry(void)
             /* TODO: This will work for lsdinjector, but this can probably be improved.
                It might have false positives (and even crashes) on some manual `inject`
                scenarios. */
-            if (stack[i] > _LSApplicationCheckIn && stack[i] < _LSApplicationCheckIn + 4096) {
+            if (stack[i] > _LSApplicationCheckIn && stack[i] < _LSApplicationCheckIn + 8192) {
                 ret_address = stack[i];
                 stack_ret = &stack[i];
                 stack[i] = (uintptr_t)&late_inject;
@@ -150,9 +137,20 @@ void __attribute__((preserve_all)) entry(void)
     if ($dlopen) {
         $dlopen(argument, RTLD_NOW);
     }
-	
-    set_flags(flags);
 }
+
+void __attribute__((naked)) entry(void)
+{
+    __asm__ ("push %rax\n" // Alignment dummy
+             "push %r11\n"
+             "pushfq\n"
+             "call _c_entry\n"
+             "popfq\n"
+             "pop %r11\n"
+             "pop %rax\n" // Alignment dummy
+             "ret\n");
+}
+
 
 /* Taken from Apple's libc */
 

@@ -9,13 +9,31 @@
 
 #define objc_collectingEnabled() (@selector(retain) == @selector(release))
 
-static char user_data_path[USER_DATA_PATH_MAX] = "";
 
-/* Exported so it can be used by loaded library */
+/* Exported so they can be used by loaded bundles */
+const char *MIP_loader_path(void)
+{
+    Dl_info info;
+    dladdr("", &info); // Get own info
+    return info.dli_fname;
+}
+
+const char *MIP_root_path(void)
+{
+    static char *ret = NULL;
+    if (ret) return ret;
+        
+    ret = strdup(MIP_loader_path());
+    *strrchr(ret, '/') = 0;
+    return ret;
+}
+
 const char *MIP_user_data_path(void)
 {
+    static char user_data_path[PATH_MAX] = "";
+
     if (!user_data_path[0]) {
-        sprintf(user_data_path, USER_DATA_ROOT "/%d", getuid());
+        sprintf(user_data_path, "%s/user_data/%d", MIP_root_path(), getuid());
     }
     return user_data_path;
 }
@@ -71,7 +89,7 @@ static void __attribute__((constructor)) loader(void)
 
             NSFileManager *fm = NSFileManager.defaultManager;
             
-            NSURL *tweakBundlesURL = [NSURL fileURLWithPath:@GLOBAL_DATA_ROOT "/Bundles"];
+            NSURL *tweakBundlesURL = [NSURL fileURLWithPath:[@(MIP_root_path()) stringByAppendingPathComponent:@"Bundles"]];
             NSArray *tweakBundles = [fm contentsOfDirectoryAtURL:tweakBundlesURL
                                       includingPropertiesForKeys:nil
                                                          options:NSDirectoryEnumerationSkipsHiddenFiles

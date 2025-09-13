@@ -2,6 +2,8 @@
 .INTERMEDIATE:
 .PHONY: all install
 
+MIP_ROOT ?= /Library/Apple/System/Library/Frameworks/mip
+
 all: build/Alt-Zoom.bundle build/Alt-Zoom.app
 
 CC := clang
@@ -66,7 +68,7 @@ build/Alt-Zoom.app: build/Alt-Zoom.app/Contents/MacOS/Alt-Zoom\
 
 build/Alt-Zoom.bundle/Contents/MacOS/Alt-Zoom: $(BUNDLE_OBJECTS)
 	-@mkdir -p $(dir $@)
-	$(CC) $(BUNDLE_LDFLAGS) -bundle /Library/Apple/System/Library/Frameworks/mip/loader.dylib $^ -o $@
+	$(CC) $(BUNDLE_LDFLAGS) -bundle $(MIP_ROOT)/loader.dylib $^ -o $@
 	
 build/Alt-Zoom.bundle/Contents/%: bundle/%
 	-@mkdir -p $(dir $@)
@@ -94,10 +96,10 @@ clean:
 
 install: all
 	sudo cp -rf build/Alt-Zoom.app /Applications/
-	sudo rm -rf /Library/Apple/System/Library/Frameworks/mip/Bundles/Alt-Zoom.bundle
-	sudo cp -rf build/Alt-Zoom.bundle /Library/Apple/System/Library/Frameworks/mip/Bundles/
+	sudo rm -rf $(MIP_ROOT)/Bundles/Alt-Zoom.bundle
+	sudo cp -rf build/Alt-Zoom.bundle $(MIP_ROOT)/Bundles/
 
 uninstall:
-	sudo rm -rf /Library/Apple/System/Library/Frameworks/mip/Bundles/Alt-Zoom.bundle
+	sudo rm -rf $(MIP_ROOT)/Bundles/Alt-Zoom.bundle
 	sudo rm -rf /Applications/Alt-Zoom.app
 	

@@ -4,8 +4,7 @@
 #include <stdint.h>
 #include <pwd.h>
 #include <sys/syslimits.h>
-
-#include <loader/loader.h>
+#include <dlfcn.h>
 #include <mach-o/loader.h>
 #include <mach-o/dyld.h>
 #include "injectd_client/injectd_client.h"
@@ -13,6 +12,37 @@
 // Private APIs
 extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *);
 extern void xpc_dictionary_get_audit_token(xpc_object_t xdict, audit_token_t *token);
+
+static const char *MIP_injector_path(void)
+{
+    Dl_info info;
+    dladdr("", &info); // Get own info
+    return info.dli_fname;
+}
+
+static const char *MIP_loader_path(void)
+{
+    static char *ret = NULL;
+    if (ret) return ret;
+    
+    ret = strdup(MIP_injector_path());
+    *strrchr(ret, '/') = 0;
+    
+    // strlen("loader.dylib") < strlen("lsdinjector.dylib")
+    strcat(ret, "/loader.dylib");
+    
+    return ret;
+}
+
+static const char *MIP_root_path(void)
+{
+    static char *ret = NULL;
+    if (ret) return ret;
+    
+    ret = strdup(MIP_injector_path());
+    *strrchr(ret, '/') = 0;
+    return ret;
+}
 
 /* We want the user data to be accessible from all processes, but some processes (for
    example, Chrome's sub-processes) have a very strict sandbox profile so putting the
@@ -25,8 +55,8 @@ static void create_user_data_folder(pid_t pid)
     struct proc_bsdinfo proc;
     proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &proc, sizeof(proc));
     
-    char path[USER_DATA_PATH_MAX];
-    sprintf(path, USER_DATA_ROOT "/%d", proc.pbi_uid);
+    char path[PATH_MAX];
+    sprintf(path, "%s/user_data/%d", MIP_root_path(), proc.pbi_uid);
     
     if (mkdir(path, 0755)) return; // Might already exist
     chown(path, proc.pbi_uid, proc.pbi_gid);
@@ -55,7 +85,7 @@ static void handleClientMessageHook_common(uint64_t command, xpc_object_t dict)
         /* While strictly speaking this should be loader's responsibility to create this folder,
            this function must run as root, so it is done by the injector. */
         create_user_data_folder(pid);
-        inject_to_pid(pid, "/Library/Apple/System/Library/Frameworks/mip/loader.dylib", false);
+        inject_to_pid(pid, MIP_loader_path(), false);
     }
 }
 
@@ -69,6 +99,57 @@ static uint64_t xpc_dictionary_get_int64_hook(xpc_object_t dict, const char *key
 }
 
 #if __arm64__
+
+// Derived from code by khanhduytran0 {
+#define _COMM_PAGE_START_ADDRESS (0x0000000FFFFFC000ULL)
+#define _COMM_PAGE_TPRO_WRITE_ENABLE (_COMM_PAGE_START_ADDRESS + 0x0D0)
+#define _COMM_PAGE_TPRO_WRITE_DISABLE (_COMM_PAGE_START_ADDRESS + 0x0D8)
+
+static bool os_tpro_is_supported(void)
+{
+    if (*(uint64_t*)_COMM_PAGE_TPRO_WRITE_ENABLE) {
+        return true;
+    }
+    return false;
+}
+
+__attribute__((naked)) bool os_thread_self_tpro_is_writeable(void)
+{
+    __asm__ __volatile__ (
+                          "mrs             x0, s3_6_c15_c1_5\n"
+                          "ubfx            x0, x0, #0x24, #1;\n"
+                          "ret\n"
+                          );
+}
+
+void os_thread_self_restrict_tpro_to_rw(void)
+{
+    __asm__ __volatile__ (
+                          "mov x0, %0\n"
+                          "ldr x0, [x0]\n"
+                          "msr s3_6_c15_c1_5, x0\n"
+                          "isb sy\n"
+                          :: "r" (_COMM_PAGE_TPRO_WRITE_ENABLE)
+                          : "memory", "x0"
+                          );
+    return;
+}
+
+void os_thread_self_restrict_tpro_to_ro(void)
+{
+    __asm__ __volatile__ (
+                          "mov x0, %0\n"
+                          "ldr x0, [x0]\n"
+                          "msr s3_6_c15_c1_5, x0\n"
+                          "isb sy\n"
+                          :: "r" (_COMM_PAGE_TPRO_WRITE_DISABLE)
+                          : "memory", "x0"
+                          );
+    return;
+}
+
+// }
+
 static void unprotect_page(void *page)
 {
     if (mprotect(page, 0x4000, PROT_READ | PROT_WRITE) == 0) {
@@ -107,11 +188,24 @@ static void __attribute__((constructor)) hook_lsd(void)
     uintptr_t slide = (uintptr_t)header - first->vmaddr;
     void **address = (void **)(data->vmaddr + slide);
     void **end = (void **)(data->vmaddr + data->vmsize + slide);
+#if __arm64__
+    bool has_tpro = os_tpro_is_supported();
+#endif
     while (address < end) {
     #if __arm64__
-        if (((uintptr_t)*address & 0xFFFFFFFFFFF) == ((uintptr_t)(xpc_dictionary_get_int64) & 0xFFFFFFFFFFF)) {
-            unprotect_page((void *)(((uintptr_t)address) & ~0x3FFF));
-            *address = ptrauth_sign_unauthenticated((void *)((uintptr_t)&xpc_dictionary_get_int64_hook & 0xFFFFFFFFFFF), ptrauth_key_function_pointer, address);
+        if ((uintptr_t)__builtin_ptrauth_strip(*address, 0) == (uintptr_t)__builtin_ptrauth_strip(&xpc_dictionary_get_int64, 0)) {
+            bool revert_tpro_state = false;
+            if (!has_tpro) {
+                unprotect_page((void *)(((uintptr_t)address) & ~0x3FFF));
+            }
+            else if (!os_thread_self_tpro_is_writeable()) {
+                os_thread_self_restrict_tpro_to_rw();
+                revert_tpro_state = true;
+            }
+            *address = ptrauth_sign_unauthenticated((void *)((uintptr_t)__builtin_ptrauth_strip(&xpc_dictionary_get_int64_hook, 0)), ptrauth_key_function_pointer, address);
+            if (revert_tpro_state) {
+                os_thread_self_restrict_tpro_to_ro();
+            }
         }
     #else
         if (*address == xpc_dictionary_get_int64) {
