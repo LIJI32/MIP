@@ -49,10 +49,34 @@ LIST_HEAD(tramp_info_page_list, tramp_info_page_header)
     tramp_free_page_list = LIST_HEAD_INITIALIZER(tramp_info_page_list);
 
 extern char remap_start[];
+static char *remap_page; // vm_remap doesn't like remapping our _TEXT anymore so make a single anonymous page copy
 
 static int get_trampoline(void *func, void *arg1, void *arg2, void *tramp_ptr) {
     int ret, rerrno = 0;
     pthread_mutex_lock(&tramp_mutex);
+
+    if (!remap_page) {
+        if (PAGE_SIZE > _PAGE_SIZE)
+            substitute_panic("%s: strange PAGE_SIZE %lx\n",
+                             __func__, (long) PAGE_SIZE);
+        void *new_page = mmap(NULL, _PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+        if (new_page == MAP_FAILED) {
+            ret = SUBSTITUTE_ERR_OOM;
+            rerrno = errno;
+            goto out;
+        }
+        kern_return_t kr = vm_copy(mach_task_self(), (vm_address_t) remap_start, PAGE_SIZE, (vm_address_t) new_page);
+        if (kr != KERN_SUCCESS) {
+            ret = SUBSTITUTE_ERR_VM;
+            goto out;
+        }
+        kr = mprotect(new_page, _PAGE_SIZE, PROT_READ | PROT_EXEC);
+        if (kr != KERN_SUCCESS) {
+            ret = SUBSTITUTE_ERR_VM;
+            goto out;
+        }
+        remap_page = new_page;
+    }
 
     struct tramp_info_page_header *header = LIST_FIRST(&tramp_free_page_list);
     if (!header) {
@@ -75,7 +99,7 @@ static int get_trampoline(void *func, void *arg1, void *arg2, void *tramp_ptr) {
             _PAGE_SIZE - 1,
             VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED,
             mach_task_self(),
-            (vm_address_t) remap_start,
+            (vm_address_t) remap_page,
             FALSE, /* copy */
             &cur_prot,
             &max_prot,
