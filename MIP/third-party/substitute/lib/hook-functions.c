@@ -167,6 +167,16 @@ int substitute_hook_functions(const struct substitute_function_hook *hooks,
         void *code = make_sym_readable(hook->function);
         struct arch_dis_ctx arch;
         arch_dis_ctx_init(&arch);
+#ifdef __arm64__
+        // While code is B addr hook the target of B instead
+        while (((*(uint32_t*)code)&0xFC000000) == 0x14000000) {
+            uint32_t *addr = code;
+            int64_t offset = *addr & 0x3FFFFFF;
+            offset <<= 64 - 26;
+            offset >>= 64 - 26 - 2;
+            code = (void *)((uint64_t)code + offset);
+        }
+#endif
 #ifdef __arm__
         if ((uintptr_t) code & 1) {
             arch.pc_low_bit = true;

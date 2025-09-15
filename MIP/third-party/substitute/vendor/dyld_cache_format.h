@@ -72,7 +72,7 @@ struct dyld_cache_header
 	uint64_t	dylibsTrieAddr;			// (unslid) address of trie of indexes of all cached dylibs
 	uint64_t	dylibsTrieSize;			// size of trie of cached dylib paths
 	uint64_t	otherImageArrayAddr;		// (unslid) address of ImageArray for dylibs and bundles with dlopen closures
-        uint64_t	otherImageArraySize;		// size of ImageArray for dylibs and bundles with dlopen closures
+	uint64_t	otherImageArraySize;		// size of ImageArray for dylibs and bundles with dlopen closures
 	uint64_t	otherTrieAddr;			// (unslid) address of trie of indexes of all dylibs and bundles with dlopen closures
 	uint64_t	otherTrieSize;			// size of trie of dylibs and bundles with dlopen closures
 	uint32_t	mappingWithSlideOffset;		// file offset to first dyld_cache_mapping_and_slide_info
@@ -158,7 +158,8 @@ struct dyld_cache_local_symbols_entry_64
 
 
 #define MACOSX_DYLD_SHARED_CACHE_DIR	"/var/db/dyld/"
-#define IPHONE_DYLD_SHARED_CACHE_DIR	"/System/Library/Caches/com.apple.dyld/"
+#define IPHONE_DYLD_SHARED_CACHE_DIR	"/System/Cryptexes/OS/System/Library/Caches/com.apple.dyld/"
+#define IPHONE_DYLD_SHARED_CACHE_DIR_OLD	"/System/Library/Caches/com.apple.dyld/"
 #define DYLD_SHARED_CACHE_BASE_NAME		"dyld_shared_cache_"
 
 

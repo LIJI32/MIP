@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define LOG(...) os_log(OS_LOG_DEFAULT, "SubstituteLog: " __VA_ARGS__);
+#define LOG(x, ...) os_log(OS_LOG_DEFAULT, "SubstituteLog: " x, ##__VA_ARGS__);
 
 #define substitute_panic(...) do { \
     LOG(__VA_ARGS__); \
